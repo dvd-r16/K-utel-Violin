@@ -3,7 +3,7 @@ from tkinter import Tk, Canvas, PhotoImage
 import subprocess
 
 OUTPUT_PATH = Path(__file__).parent
-ASSETS_PATH = OUTPUT_PATH / Path(r"D:\Desktop\K'UTEL VIOLIN\Start\build\assets\frame0")
+ASSETS_PATH = OUTPUT_PATH / "assets" / "frame0"
 
 def relative_to_assets(path: str) -> Path:
     return ASSETS_PATH / Path(path)
@@ -12,9 +12,11 @@ def close_splash():
     window.destroy()  # Ahora se cierra un poco después
 
 def launch_main_gui():
-    main_gui_path = r"D:\Desktop\K'UTEL VIOLIN\Menu\build\gui.py"
-    subprocess.Popen(["python", main_gui_path])
-    window.after(2000, close_splash)  # Espera 500 ms antes de cerrar splash
+    # Desde splash.py: subir dos niveles -> Start/ → K-utel-Violin/
+    project_root = Path(__file__).resolve().parent.parent.parent
+    main_gui_path = project_root / "Menu" / "build" / "gui.py"
+    subprocess.Popen(["python", str(main_gui_path)])
+    window.after(2000, close_splash)
 
 window = Tk()
 window.attributes("-fullscreen", True)
