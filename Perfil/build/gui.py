@@ -1,0 +1,163 @@
+from pathlib import Path
+from tkinter import Tk, Canvas, Button, PhotoImage
+import subprocess
+
+OUTPUT_PATH = Path(__file__).parent
+ASSETS_PATH = OUTPUT_PATH / "assets" / "frame0"
+BASE_PATH = Path(__file__).resolve().parent.parent.parent
+
+MENU_PATH = BASE_PATH / "Menu" / "build" / "gui.py"
+LOGIN_PATH = BASE_PATH / "Login" / "build" / "gui.py"
+USERS_PATH = BASE_PATH / "Login" / "usuarios"
+USER_SELECTED_PATH = BASE_PATH / "usuario_seleccionado.txt"
+ESTADISTICAS_GUI_PATH = BASE_PATH / "Stats" / "build" / "gui.py"
+
+def relative_to_assets(path: str) -> Path:
+    return ASSETS_PATH / Path(path)
+
+def open_login():
+    # Cambiar imagen del botón 1 al presionar
+    button_1.config(image=button_image_1_pressed)
+    subprocess.Popen(["python", str(LOGIN_PATH)])
+    window.after(1000, window.destroy)
+
+def open_menu():
+    subprocess.Popen(["python", str(MENU_PATH)])
+    window.after(1000, window.destroy)
+
+def open_estadisticas_gui():
+    subprocess.Popen(["python", str(ESTADISTICAS_GUI_PATH)])
+    window.after(2000, window.destroy)
+
+# ----------------- Cargar datos del usuario -----------------
+
+def cargar_datos_usuario():
+    try:
+        with open(USER_SELECTED_PATH, 'r') as file:
+            user_id = file.read().strip()
+        user_file = USERS_PATH / f"user_{user_id}.txt"
+        with open(user_file, 'r') as file:
+            data = file.readlines()
+        datos = {}
+        for linea in data:
+            if ':' in linea:
+                clave, valor = linea.strip().split(":", 1)
+                clave = clave.strip().lower()
+                # Normaliza claves comunes
+                if "nombre" in clave:
+                    datos["nombre"] = valor.strip()
+                elif "apellido" in clave:
+                    datos["apellido"] = valor.strip()
+                elif "edad" in clave:
+                    datos["edad"] = valor.strip()
+                elif "genero" in clave or "género" in clave:
+                    datos["genero"] = valor.strip()
+                genero_valor = datos.get("genero", "").strip().lower()
+        if "femenino" in genero_valor:
+            genero = "F"
+        elif "masculino" in genero_valor:
+            genero = "M"
+        else:
+            genero = "F/M"
+
+        return (
+            datos.get("nombre", "NOMBRE"),
+            datos.get("apellido", "APELLIDO"),
+            datos.get("edad", "##"),
+            datos.get("genero", genero)
+        )
+
+    except Exception as e:
+        print(f"Error al leer datos del usuario: {e}")
+        return ("NOMBRE", "APELLIDO", "##", "F/M")
+
+# ------------------ Inicio de ventana -----------------------
+
+window = Tk()
+window.attributes("-fullscreen", True)
+window.geometry("1440x900")
+window.configure(bg="#32457D")
+
+canvas = Canvas(
+    window,
+    bg="#32457D",
+    height=900,
+    width=1440,
+    bd=0,
+    highlightthickness=0,
+    relief="ridge"
+)
+canvas.place(x=0, y=0)
+
+image_image_1 = PhotoImage(file=relative_to_assets("image_1.png"))
+canvas.create_image(720.0, 450.0, image=image_image_1)
+
+# Botones
+button_image_1 = PhotoImage(file=relative_to_assets("button_1.png"))
+button_image_1_pressed = PhotoImage(file=relative_to_assets("button_1.1.png"))
+button_1 = Button(
+    image=button_image_1,
+    borderwidth=0,
+    highlightthickness=0,
+    command=open_login,
+    relief="flat",
+    bg="#32457D",
+    activebackground="#32457D"
+)
+button_1.place(x=148.0, y=88.0, width=156.55, height=74.16)
+
+button_image_2 = PhotoImage(file=relative_to_assets("button_2.png"))
+button_2 = Button(
+    image=button_image_2,
+    borderwidth=0,
+    highlightthickness=0,
+    command=open_estadisticas_gui,
+    relief="flat",
+    bg="#32457D",
+    activebackground="#32457D"
+)
+button_2.place(x=348.94, y=88.0, width=258.50, height=73.97)
+
+button_active_3 = PhotoImage(file=relative_to_assets("button_3.1.png"))
+button_3 = Button(
+    image=button_active_3,
+    borderwidth=0,
+    highlightthickness=0,
+    command=open_menu,
+    relief="flat",
+    bg="#32457D",
+    activebackground="#32457D"
+)
+button_3.place(x=659.96, y=88.0, width=154.83, height=73.97)
+
+# Elementos gráficos
+image_image_2 = PhotoImage(file=relative_to_assets("image_2.png"))
+canvas.create_image(1021.36, 123.83, image=image_image_2)
+
+image_image_3 = PhotoImage(file=relative_to_assets("image_3.png"))
+canvas.create_image(1200.0, 125.0, image=image_image_3)
+
+# ------------------ Mostrar datos de usuario ------------------
+
+nombre, apellido, edad, genero = cargar_datos_usuario()
+
+canvas.create_text(226.0, 340.0, anchor="nw", text=nombre, fill="#FFFFFF", font=("LondrinaSolid Black", -43))
+canvas.create_text(226.0, 502.0, anchor="nw", text=apellido, fill="#FFFFFF", font=("LondrinaSolid Black", -43))
+canvas.create_text(250.0, 653.0, anchor="nw", text=edad, fill="#FFFFFF", font=("LondrinaSolid Black", -43))
+canvas.create_text(561.0, 653.0, anchor="nw", text=genero, fill="#FFFFFF", font=("LondrinaSolid Black", -43))
+
+# Botón de imagen del usuario
+button_image_4 = PhotoImage(file=relative_to_assets("button_4.png"))
+button_4 = Button(
+    image=button_image_4,
+    borderwidth=0,
+    highlightthickness=0,
+    command=lambda: print("Imagen usuario"),
+    relief="flat",
+    bg="#32457D",
+    activebackground="#32457D"
+)
+button_4.place(x=794.0, y=321.0, width=420.0, height=404.0)
+
+window.resizable(False, False)
+window.mainloop()

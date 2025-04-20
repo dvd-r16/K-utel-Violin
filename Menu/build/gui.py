@@ -11,6 +11,10 @@ usuarios_path = BASE_PATH / "Login" / "usuarios"
 
 LOGIN_GUI_PATH = BASE_PATH / "Login" / "build" / "gui.py"
 
+PERFIL_GUI_PATH = BASE_PATH / "Perfil" / "build" / "gui.py"
+
+ESTADISTICAS_GUI_PATH = BASE_PATH / "Stats" / "build" / "gui.py"
+
 def relative_to_assets(path: str) -> Path:
     return ASSETS_PATH / Path(path)
 
@@ -54,6 +58,10 @@ def open_login_gui():
     subprocess.Popen(["python", str(LOGIN_GUI_PATH)])
     window.after(1000, window.destroy)  # Cierra esta ventana 1 segundo después
 
+def open_estadisticas_gui():
+    subprocess.Popen(["python", str(ESTADISTICAS_GUI_PATH)])
+    window.after(2000, window.destroy)
+
 def activate_button(button):
     global active_button
     if active_button == button:
@@ -73,18 +81,24 @@ def activate_button(button):
         open_login_gui()
     elif button == 2:
         button_2.config(image=button_active_2)
+        open_estadisticas_gui()
     elif button == 3:
         button_3.config(image=button_active_3)
+        subprocess.Popen(["python", str(PERFIL_GUI_PATH)])
+        window.after(1000, window.destroy)
     active_button = button
 
 button_1 = Button(image=button_image_1, borderwidth=0, highlightthickness=0, bg="#32457D", activebackground="#32457D", command=lambda: activate_button(1), relief="flat")
-button_1.place(x=118.0, y=45.0, width=182.0, height=81.0)
+button_1.place(x=148.0, y=87.8341064453125, width=156.55331420898438, height=74.16586303710938)
+
 
 button_2 = Button(image=button_image_2, borderwidth=0, highlightthickness=0, bg="#32457D", activebackground="#32457D", command=lambda: activate_button(2), relief="flat")
-button_2.place(x=345.0, y=45.0, width=300.0, height=81.0)
+button_2.place(x=348.94622802734375, y=87.8341064453125, width=258.50372314453125, height=73.9782485961914)
+
 
 button_3 = Button(image=button_image_3, borderwidth=0, highlightthickness=0, bg="#32457D", activebackground="#32457D", command=lambda: activate_button(3), relief="flat")
-button_3.place(x=690.0, y=45.0, width=180.0, height=81.0)
+button_3.place(x=659.95849609375, y=87.8341064453125, width=154.83294677734375, height=73.9782485961914)
+
 
 # Botones normales
 button_image_4 = PhotoImage(file=relative_to_assets("button_4.png"))
@@ -116,10 +130,12 @@ image_image_10 = PhotoImage(file=relative_to_assets("image_10.png"))
 image_image_10_1 = PhotoImage(file=relative_to_assets("image_10.1.png"))
 image_image_10_2 = PhotoImage(file=relative_to_assets("image_10.2.png"))
 image_image_10_3 = PhotoImage(file=relative_to_assets("image_10.3.png"))
-image_10 = canvas.create_image(1064.0, 85.0, image=image_image_10)
+image_10 = canvas.create_image(1021.3644409179688, 123.8341064453125, image=image_image_10)
+
 
 image_image_11 = PhotoImage(file=relative_to_assets("image_11.png"))
-canvas.create_image(1264.0, 85.0, image=image_image_11)
+canvas.create_image(1200.0, 125.0, image=image_image_11)
+
 
 # Grupo B y G
 image_image_2 = PhotoImage(file=relative_to_assets("image_2.png"))

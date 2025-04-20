@@ -2,3 +2,8 @@ Nombre: David Antonio
 Apellido: Rodas Alvarez
 Edad: 25
 Género: Masculino
+[Progreso]
+Lección 1: 2,4,1,1,6,5
+Lección 2: 3,6,4,2,7,6
+Lección 3: 6,8,6,4,8,7
+Lección 4: 9,10,9,8,9,9
