@@ -54,6 +54,7 @@ def manejar_click(usuario_id, boton, imagen_original, imagen_registrado):
 
 window = Tk()
 window.attributes("-fullscreen", True)
+window.geometry("1440x900")
 window.configure(bg="#32457D")
 
 canvas = Canvas(window, bg="#32457D", height=900, width=1440, bd=0, highlightthickness=0, relief="ridge")
