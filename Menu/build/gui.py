@@ -1,8 +1,15 @@
 from pathlib import Path
 from tkinter import Tk, Canvas, Button, PhotoImage
+import subprocess
 
 OUTPUT_PATH = Path(__file__).parent
 ASSETS_PATH = OUTPUT_PATH / "assets" / "frame0"
+
+BASE_PATH = Path(__file__).resolve().parent.parent.parent
+seleccion_path = BASE_PATH / "usuario_seleccionado.txt"
+usuarios_path = BASE_PATH / "Login" / "usuarios"
+
+LOGIN_GUI_PATH = BASE_PATH / "Login" / "build" / "gui.py"
 
 def relative_to_assets(path: str) -> Path:
     return ASSETS_PATH / Path(path)
@@ -14,24 +21,24 @@ def salir_fullscreen(event=None):
     window.destroy()
 
 window.bind("<Escape>", salir_fullscreen)
-window.geometry("1536x864")
+window.geometry("1440x900")     
 window.configure(bg="#32457D")
 
 canvas = Canvas(
     window,
     bg="#32457D",
-    height=864,
-    width=1536,
+    height=900,
+    width=1440,
     bd=0,
     highlightthickness=0,
     relief="ridge"
 )
 canvas.place(x=0, y=0)
-canvas.create_rectangle(6.0, 0.0, 1554.0, 864.0, fill="#32457D", outline="")
+canvas.create_rectangle(6.0, 0.0, 720.0, 450.0, fill="#32457D", outline="")
 
 # Imagen fija
 image_image_1 = PhotoImage(file=relative_to_assets("image_1.png"))
-canvas.create_image(777.0, 436.0, image=image_image_1)
+canvas.create_image(720.0, 450.0, image=image_image_1)
 
 # Botones con estados activos
 button_image_1 = PhotoImage(file=relative_to_assets("button_1.png"))
@@ -42,6 +49,10 @@ button_image_3 = PhotoImage(file=relative_to_assets("button_3.png"))
 button_active_3 = PhotoImage(file=relative_to_assets("button_3.1.png"))
 
 active_button = None
+
+def open_login_gui():
+    subprocess.Popen(["python", str(LOGIN_GUI_PATH)])
+    window.after(1000, window.destroy)  # Cierra esta ventana 1 segundo después
 
 def activate_button(button):
     global active_button
@@ -59,6 +70,7 @@ def activate_button(button):
     button_3.config(image=button_image_3)
     if button == 1:
         button_1.config(image=button_active_1)
+        open_login_gui()
     elif button == 2:
         button_2.config(image=button_active_2)
     elif button == 3:
@@ -239,10 +251,39 @@ window.bind("0", set_state_zero)
 window.bind("1", set_state_one)
 window.bind("2", set_state_two)
 window.bind("3", set_state_three)
-window.bind("b", toggle_b)
-window.bind("B", toggle_b)
-window.bind("g", toggle_g)
-window.bind("G", toggle_g)
+
+try:
+    if seleccion_path.exists():
+        with open(seleccion_path, "r", encoding="utf-8") as f:
+            user_id = f.read().strip()
+            print(f"[INFO] Usuario seleccionado: {user_id}")
+
+        user_file = usuarios_path / f"user_{user_id}.txt"
+
+        if user_file.exists():
+            print(f"[INFO] Información de user_{user_id}.txt:")
+            genero = ""
+            with open(user_file, "r", encoding="utf-8") as f_user:
+                for line in f_user:
+                    print(line.strip())
+                    if "Género:" in line:
+                        genero = line.split(":")[1].strip().lower()
+
+            # Activar grupo según género
+            if genero == "masculino":
+                print("[INFO] Activando grupo B (masculino)")
+                toggle_b()
+            elif genero == "femenino":
+                print("[INFO] Activando grupo G (femenino)")
+                toggle_g()
+            else:
+                print("[WARN] Género no reconocido:", genero)
+        else:
+            print(f"[ERROR] El archivo del usuario no existe: {user_file}")
+    else:
+        print(f"[ERROR] El archivo 'usuario_seleccionado.txt' no fue encontrado.")
+except Exception as e:
+    print(f"[ERROR] Al leer la información del usuario: {e}")
 
 window.resizable(False, False)
 window.mainloop()

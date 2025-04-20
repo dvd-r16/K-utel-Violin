@@ -14,7 +14,7 @@ def close_splash():
 def launch_main_gui():
     # Desde splash.py: subir dos niveles -> Start/ → K-utel-Violin/
     project_root = Path(__file__).resolve().parent.parent.parent
-    main_gui_path = project_root / "Menu" / "build" / "gui.py"
+    main_gui_path = project_root / "Login" / "build" / "gui.py"
     subprocess.Popen(["python", str(main_gui_path)])
     window.after(2000, close_splash)
 

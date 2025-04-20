@@ -1,0 +1,4 @@
+Nombre: Margarita
+Apellido: Ajpop
+Edad: 25
+Género: Femenino
