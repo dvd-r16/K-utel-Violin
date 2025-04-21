@@ -110,10 +110,13 @@ def generar_grafica_radar():
     ax.set_yticks([2, 4, 6, 8, 10])
     ax.set_yticklabels(["2", "4", "6", "8", "10"], color='white', size=8)
     ax.tick_params(colors='white')
+    ax.yaxis.grid(False)  # Oculta las líneas radiales (círculos)
 
+    # Hexágonos punteados
     for r in [2, 4, 6, 8, 10]:
         ax.plot(angles, [r]*len(angles), color='gray', linewidth=1.5, linestyle='dotted')
-        ax.spines['polar'].set_visible(False)
+
+    ax.spines['polar'].set_visible(False)
 
     colores = ['#5ce1e6', '#97d498', '#ffbd59', '#ff871d']
     etiquetas_leyenda = ["Lección 1", "Lección 2", "Lección 3", "Lección 4"]
@@ -123,12 +126,14 @@ def generar_grafica_radar():
         ax.plot(angles, datos, label=etiquetas_leyenda[idx], linewidth=2.5, linestyle='solid', color=colores[idx % len(colores)])
         ax.fill(angles, datos, alpha=0.1, color=colores[idx % len(colores)])
 
+    # Leyenda personalizada
     legend = ax.legend(loc='upper center', bbox_to_anchor=(0.5, 1.15), ncol=4, fontsize=8, frameon=True)
     legend.get_frame().set_facecolor('#203262')
     legend.get_frame().set_edgecolor('#203262')
     for text in legend.get_texts():
         text.set_color("white")
 
+    # Guardar y redimensionar
     fig.savefig(RADAR_IMAGE_PATH, dpi=100, bbox_inches='tight', transparent=False)
     plt.close(fig)
 
