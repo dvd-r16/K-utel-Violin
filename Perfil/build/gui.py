@@ -27,7 +27,7 @@ def open_menu():
 
 def open_estadisticas_gui():
     subprocess.Popen(["python", str(ESTADISTICAS_GUI_PATH)])
-    window.after(2000, window.destroy)
+    window.after(4000, window.destroy)
 
 # ----------------- Cargar datos del usuario -----------------
 
@@ -52,6 +52,10 @@ def cargar_datos_usuario():
                     datos["edad"] = valor.strip()
                 elif "genero" in clave or "género" in clave:
                     datos["genero"] = valor.strip()
+                elif "nivel" in clave:
+                    datos["nivel"] = valor  # Guardar nivel
+
+
                 genero_valor = datos.get("genero", "").strip().lower()
         if "femenino" in genero_valor:
             genero = "F"
@@ -64,12 +68,13 @@ def cargar_datos_usuario():
             datos.get("nombre", "NOMBRE"),
             datos.get("apellido", "APELLIDO"),
             datos.get("edad", "##"),
-            datos.get("genero", genero)
+            datos.get("genero", genero),
+            datos.get("nivel", "0")
         )
 
     except Exception as e:
         print(f"Error al leer datos del usuario: {e}")
-        return ("NOMBRE", "APELLIDO", "##", "F/M")
+        return ("NOMBRE", "APELLIDO", "##", "F/M", "0")
 
 # ------------------ Inicio de ventana -----------------------
 
@@ -131,15 +136,25 @@ button_3 = Button(
 button_3.place(x=659.96, y=88.0, width=154.83, height=73.97)
 
 # Elementos gráficos
-image_image_2 = PhotoImage(file=relative_to_assets("image_2.png"))
-canvas.create_image(1021.36, 123.83, image=image_image_2)
-
 image_image_3 = PhotoImage(file=relative_to_assets("image_3.png"))
 canvas.create_image(1200.0, 125.0, image=image_image_3)
 
 # ------------------ Mostrar datos de usuario ------------------
 
-nombre, apellido, edad, genero = cargar_datos_usuario()
+nombre, apellido, edad, genero, nivel = cargar_datos_usuario()
+
+nivel = nivel.strip()
+
+if nivel == "1":
+    image_nivel = PhotoImage(file=relative_to_assets("image_10.1.png"))
+elif nivel == "2":
+    image_nivel = PhotoImage(file=relative_to_assets("image_10.2.png"))
+elif nivel == "3":
+    image_nivel = PhotoImage(file=relative_to_assets("image_10.3.png"))
+else:
+    image_nivel = PhotoImage(file=relative_to_assets("image_10.png"))
+
+canvas.create_image(1021.36, 123.83, image=image_nivel)
 
 canvas.create_text(226.0, 340.0, anchor="nw", text=nombre, fill="#FFFFFF", font=("LondrinaSolid Black", -43))
 canvas.create_text(226.0, 502.0, anchor="nw", text=apellido, fill="#FFFFFF", font=("LondrinaSolid Black", -43))

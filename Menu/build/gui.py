@@ -60,7 +60,7 @@ def open_login_gui():
 
 def open_estadisticas_gui():
     subprocess.Popen(["python", str(ESTADISTICAS_GUI_PATH)])
-    window.after(2000, window.destroy)
+    window.after(4000, window.destroy)
 
 def activate_button(button):
     global active_button
@@ -268,6 +268,7 @@ window.bind("1", set_state_one)
 window.bind("2", set_state_two)
 window.bind("3", set_state_three)
 
+
 try:
     if seleccion_path.exists():
         with open(seleccion_path, "r", encoding="utf-8") as f:
@@ -284,6 +285,8 @@ try:
                     print(line.strip())
                     if "Género:" in line:
                         genero = line.split(":")[1].strip().lower()
+                    elif "Nivel:" in line:
+                        nivel = line.split(":")[1].strip()
 
             # Activar grupo según género
             if genero == "masculino":
@@ -294,6 +297,25 @@ try:
                 toggle_g()
             else:
                 print("[WARN] Género no reconocido:", genero)
+            
+            print(f"[INFO] Nivel del usuario: {nivel}")
+            try:
+                nivel_int = int(nivel)
+                if nivel_int >= 0:
+                    set_state_zero()
+                if nivel_int >= 1:
+                    set_state_one()
+                if nivel_int >= 2:
+                    set_state_two()
+                if nivel_int >= 3:
+                    set_state_three()
+                if nivel_int > 3:
+                    print("[WARN] Nivel fuera de rango esperado (0-3):", nivel_int)
+            except ValueError:
+                print("[ERROR] El nivel no es un número válido:", nivel)
+
+
+            
         else:
             print(f"[ERROR] El archivo del usuario no existe: {user_file}")
     else:

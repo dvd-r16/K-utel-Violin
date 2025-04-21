@@ -2,11 +2,15 @@ from pathlib import Path
 from tkinter import Tk, Canvas, Entry, Button, PhotoImage, StringVar
 import subprocess
 import re
+import pandas as pd
+from datetime import datetime
 
 OUTPUT_PATH = Path(__file__).parent
 ASSETS_PATH = OUTPUT_PATH / "assets" / "frame0"
-USERS_PATH = OUTPUT_PATH.parent.parent / "Login" / "usuarios"
 MENU_GUI_PATH = OUTPUT_PATH.parent.parent / "Menu" / "build" / "gui.py"
+BASE_PATH = Path(__file__).resolve().parent.parent.parent
+USERS_PATH = BASE_PATH / "Login" / "usuarios"
+USER_SELECTED_PATH = BASE_PATH / "usuario_seleccionado.txt"
 
 USERS_PATH.mkdir(parents=True, exist_ok=True)
 
@@ -92,15 +96,53 @@ def guardar_datos():
     edad = entry_3.get().strip()
     genero_valor = genero.get()
 
-    # Asignar el primer archivo disponible user_1.txt a user_5.txt
-    for i in range(1, 6):
-        ruta = USERS_PATH / f"user_{i}.txt"
-        if not ruta.exists():
-            with open(ruta, "w", encoding="utf-8") as f:
-                f.write(f"Nombre: {nombre}\nApellido: {apellido}\nEdad: {edad}\nGénero: {genero_valor}")
-            subprocess.Popen(["python", str(MENU_GUI_PATH)])
-            window.after(2000, window.destroy)
-            break
+    # Leer ID seleccionado
+    if not USER_SELECTED_PATH.exists():
+        print("[ERROR] No se encontró el archivo usuario_seleccionado.txt")
+        return
+
+    with open(USER_SELECTED_PATH, "r", encoding="utf-8") as f:
+        id_usuario = f.read().strip()
+
+    # Verificar si es válido
+    if not id_usuario.isdigit() or not (1 <= int(id_usuario) <= 5):
+        print(f"[ERROR] ID de usuario inválido: {id_usuario}")
+        return
+
+    # Construir rutas de archivos
+    ruta_txt = USERS_PATH / f"user_{id_usuario}.txt"
+    ruta_csv = USERS_PATH / f"user_{id_usuario}.csv"
+
+    # Verificar si ya existe
+    if ruta_txt.exists():
+        print(f"[INFO] El usuario user_{id_usuario}.txt ya existe.")
+        return
+
+    # Escribir archivo .txt con datos personales y progreso
+    contenido = (
+        f"Nombre: {nombre}\n"
+        f"Apellido: {apellido}\n"
+        f"Edad: {edad}\n"
+        f"Género: {genero_valor}\n"
+        f"Nivel: 0\n"
+        f"[Progreso]\n"
+        f"Lección 1: 0,0,0,0,0,0\n"
+        f"Lección 2: 0,0,0,0,0,0\n"
+        f"Lección 3: 0,0,0,0,0,0\n"
+        f"Lección 4: 0,0,0,0,0,0"
+    )
+
+    with open(ruta_txt, "w", encoding="utf-8") as f:
+        f.write(contenido)
+
+    # Crear archivo CSV vacío
+    df = pd.DataFrame(columns=["leccion", "intento", "valor", "fecha"])
+    df.to_csv(ruta_csv, index=False)
+
+    # Lanzar GUI del menú y cerrar ventana actual
+    subprocess.Popen(["python", str(MENU_GUI_PATH)])
+    window.after(2000, window.destroy)
+
 
 button_1 = Button(image=button_1_inactive, borderwidth=0, highlightthickness=0, bg="#32457D",
                   activebackground="#32457D", command=guardar_datos, relief="flat", state="disabled")
