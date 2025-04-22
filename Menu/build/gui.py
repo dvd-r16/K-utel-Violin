@@ -1,6 +1,10 @@
 from pathlib import Path
 from tkinter import Tk, Canvas, Button, PhotoImage
 import subprocess
+import pygame
+
+pygame.mixer.init()
+
 
 OUTPUT_PATH = Path(__file__).parent
 ASSETS_PATH = OUTPUT_PATH / "assets" / "frame0"
@@ -18,10 +22,22 @@ ESTADISTICAS_GUI_PATH = BASE_PATH / "Stats" / "build" / "gui.py"
 def relative_to_assets(path: str) -> Path:
     return ASSETS_PATH / Path(path)
 
+# Ruta del archivo de música (colócalo en el mismo folder o en assets)
+music_path = str(ASSETS_PATH / "musica_fondo.wav")  # O .wav si prefieres
+
+# Cargar y reproducir la música en loop
+try:
+    pygame.mixer.music.load(music_path)
+    pygame.mixer.music.play(-1)  # -1 hace que se repita indefinidamente
+    print("[INFO] Música de fondo iniciada.")
+except Exception as e:
+    print(f"[ERROR] No se pudo reproducir la música: {e}")
+
 window = Tk()
 window.attributes("-fullscreen", True)
 
 def salir_fullscreen(event=None):
+    pygame.mixer.music.stop()
     window.destroy()
 
 window.bind("<Escape>", salir_fullscreen)
