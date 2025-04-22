@@ -2,6 +2,7 @@ import subprocess
 from pathlib import Path
 from tkinter import Tk, Canvas, Button, PhotoImage
 import os
+from PIL import Image, ImageTk 
 
 OUTPUT_PATH = Path(__file__).parent
 ASSETS_PATH = OUTPUT_PATH / "assets" / "frame0"
@@ -71,11 +72,32 @@ imagenes_registrado = []
 posiciones = [17.0, 301.0, 587.0, 873.0, 1160.0]
 
 for i in range(5):
-    img_orig = PhotoImage(file=relative_to_assets(f"button_{i+1}.png"))
-    img_reg = PhotoImage(file=relative_to_assets(f"button_{i+1}.1.png"))
+    user_id = i + 1
 
-    imagen_actual = img_reg if verificar_usuario(i+1) else img_orig
+    # Rutas de imágenes base
+    ruta_img_original = relative_to_assets(f"button_{user_id}.png")
+    ruta_img_registrado = relative_to_assets(f"button_{user_id}.1.png")
+    ruta_img_usuario = USERS_PATH / f"user_{user_id}.jpeg"
 
+    # Cargar imagenes originales
+    img_orig = PhotoImage(file=ruta_img_original)
+    img_reg = PhotoImage(file=ruta_img_registrado)
+
+    # Verificamos si el usuario tiene su archivo de datos
+    if verificar_usuario(user_id):
+        # Si tiene imagen personalizada, la usamos
+        if ruta_img_usuario.exists():
+            try:
+                imagen_personalizada = Image.open(ruta_img_usuario).resize((265, 264))
+                img_reg = ImageTk.PhotoImage(imagen_personalizada)
+            except Exception as e:
+                print(f"❌ Error al cargar user_{user_id}.jpeg: {e}")
+                img_reg = PhotoImage(file=ruta_img_registrado)
+        imagen_actual = img_reg
+    else:
+        imagen_actual = img_orig
+
+    # Crear el botón
     btn = Button(
         image=imagen_actual,
         borderwidth=0,
@@ -84,10 +106,11 @@ for i in range(5):
         activebackground="#32457D",
         relief="flat"
     )
+    btn.image = imagen_actual  # Evita que la imagen se borre de memoria
     btn.place(x=posiciones[i], y=335.0, width=265.0, height=264.0)
 
-    # Ahora que btn ya está definido, podemos asignar el comando
-    btn.config(command=lambda i=i, b=btn, o=img_orig, r=img_reg: manejar_click(i+1, b, o, r))
+    # Comando del botón
+    btn.config(command=lambda i=user_id, b=btn, o=img_orig, r=img_reg: manejar_click(i, b, o, r))
 
     botones.append(btn)
     imagenes_originales.append(img_orig)

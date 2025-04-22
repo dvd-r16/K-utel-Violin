@@ -1,6 +1,9 @@
 from pathlib import Path
 from tkinter import Tk, Canvas, Button, PhotoImage
 import subprocess
+from PIL import Image, ImageTk
+import os
+
 
 OUTPUT_PATH = Path(__file__).parent
 ASSETS_PATH = OUTPUT_PATH / "assets" / "frame0"
@@ -11,6 +14,8 @@ LOGIN_PATH = BASE_PATH / "Login" / "build" / "gui.py"
 USERS_PATH = BASE_PATH / "Login" / "usuarios"
 USER_SELECTED_PATH = BASE_PATH / "usuario_seleccionado.txt"
 ESTADISTICAS_GUI_PATH = BASE_PATH / "Stats" / "build" / "gui.py"
+PHOTO_PATH = BASE_PATH / "Camara" / "Photo.py"
+
 
 def relative_to_assets(path: str) -> Path:
     return ASSETS_PATH / Path(path)
@@ -162,17 +167,64 @@ canvas.create_text(250.0, 653.0, anchor="nw", text=edad, fill="#FFFFFF", font=("
 canvas.create_text(561.0, 653.0, anchor="nw", text=genero, fill="#FFFFFF", font=("LondrinaSolid Black", -43))
 
 # Botón de imagen del usuario
-button_image_4 = PhotoImage(file=relative_to_assets("button_4.png"))
+try:
+    with open(USER_SELECTED_PATH, "r") as f:
+        user_id = f.read().strip()
+    user_image_path = USERS_PATH / f"user_{user_id}.jpeg"
+
+    if user_image_path.exists():
+        imagen_usuario = Image.open(user_image_path).resize((420, 420))
+        imagen_usuario_tk = ImageTk.PhotoImage(imagen_usuario)
+    else:
+        print(f"⚠️ Imagen no encontrada: {user_image_path}")
+        imagen_usuario_tk = PhotoImage(file=relative_to_assets("button_4.png"))
+
+except Exception as e:
+    print(f"❌ Error cargando imagen del usuario: {e}")
+    imagen_usuario_tk = PhotoImage(file=relative_to_assets("button_4.png"))
+
+
+def abrir_camara():
+    try:
+        subprocess.Popen(["python3", str(PHOTO_PATH)])
+    except Exception as e:
+        print(f"❌ No se pudo abrir Photo.py: {e}")
+
+
+
 button_4 = Button(
-    image=button_image_4,
+    image=imagen_usuario_tk,
     borderwidth=0,
     highlightthickness=0,
-    command=lambda: print("Imagen usuario"),
+    command=abrir_camara,
     relief="flat",
     bg="#32457D",
     activebackground="#32457D"
 )
-button_4.place(x=794.0, y=321.0, width=420.0, height=404.0)
+button_4.place(x=794.0, y=321.0, width=420.0, height=420.0)
+
+# Tiempo de última modificación del archivo JPEG
+try:
+    last_mtime = os.path.getmtime(user_image_path)
+except:
+    last_mtime = 0
+
+def verificar_cambio_imagen():
+    global imagen_usuario_tk, last_mtime
+
+    try:
+        nuevo_mtime = os.path.getmtime(user_image_path)
+        if nuevo_mtime != last_mtime:
+            print("🔄 Imagen del usuario modificada, actualizando...")
+            last_mtime = nuevo_mtime
+            nueva_imagen = Image.open(user_image_path).resize((420, 420))
+            imagen_usuario_tk = ImageTk.PhotoImage(nueva_imagen)
+            button_4.config(image=imagen_usuario_tk)
+    except:
+        pass
+
+    window.after(2000, verificar_cambio_imagen)  # Revisa cada 2 segundos
 
 window.resizable(False, False)
+verificar_cambio_imagen()
 window.mainloop()
