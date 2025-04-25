@@ -1,3 +1,5 @@
+import pygame
+import os
 import argparse
 import sys
 import time
@@ -17,7 +19,23 @@ last_boxes = None
 last_scores = None
 last_keypoints = None
 WINDOW_SIZE_H_W = (480, 640)
+pygame.mixer.init()
+BASE_PATH = os.path.dirname(__file__)  # Donde está tu .py
+TICK_SOUND_PATH = os.path.join(BASE_PATH, "tick.wav")
 
+try:
+    tick = pygame.mixer.Sound(TICK_SOUND_PATH)
+    print("[INFO] Sonido de metrónomo cargado exitosamente.")
+except Exception as e:
+    print(f"[ERROR] No se pudo cargar el sonido del metrónomo: {e}")
+    tick = None
+
+# Configuración del metrónomo
+bpm = 120  # Puedes cambiarlo
+interval = 60 / bpm  # 60 segundos dividido por beats por minuto
+
+# Para controlar cuándo sonar el tick
+last_tick_time = time.time()
 
 def ai_output_tensor_parse(metadata: dict):
     """Parse the output tensor into a number of detected objects, scaled to the ISP output."""
@@ -154,3 +172,7 @@ if __name__ == "__main__":
 
     while True:
         time.sleep(0.5)
+        current_time = time.time()
+        if tick and (current_time - last_tick_time >= interval):
+            tick.play()
+            last_tick_time = current_time
