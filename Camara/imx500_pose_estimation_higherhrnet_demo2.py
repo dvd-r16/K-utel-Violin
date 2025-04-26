@@ -1,14 +1,15 @@
-import pygame
-import os
 import argparse
 import sys
 import time
+import subprocess
+import signal
 
 import numpy as np
 from libcamera import Transform
 from picamera2 import CompletedRequest, MappedArray, Picamera2
 from picamera2.devices.imx500 import IMX500, NetworkIntrinsics
 from picamera2.devices.imx500.postprocess import COCODrawer
+from pathlib import Path
 import picamera2.devices.imx500.postprocess as pp
 print(pp.__file__)
 
@@ -19,23 +20,25 @@ last_boxes = None
 last_scores = None
 last_keypoints = None
 WINDOW_SIZE_H_W = (480, 640)
-pygame.mixer.init()
-BASE_PATH = os.path.dirname(__file__)  # Donde está tu .py
-TICK_SOUND_PATH = os.path.join(BASE_PATH, "tick.wav")
 
-try:
-    tick = pygame.mixer.Sound(TICK_SOUND_PATH)
-    print("[INFO] Sonido de metrónomo cargado exitosamente.")
-except Exception as e:
-    print(f"[ERROR] No se pudo cargar el sonido del metrónomo: {e}")
-    tick = None
+metronomo_process = None
 
-# Configuración del metrónomo
-bpm = 120  # Puedes cambiarlo
-interval = 60 / bpm  # 60 segundos dividido por beats por minuto
+def iniciar_metronomo():
+    global metronomo_process
+    metronomo_path = Path(__file__).parent.parent / "Metronomo" / "Metronomo.py"
+    metronomo_process = subprocess.Popen(["python3", str(metronomo_path)])
+    print("[INFO] Metronomo iniciado.")
 
-# Para controlar cuándo sonar el tick
-last_tick_time = time.time()
+def detener_metronomo():
+    global metronomo_process
+    if metronomo_process is not None:
+        try:
+            metronomo_process.terminate()
+            metronomo_process.wait(timeout=5)
+            print("[INFO] Metronomo detenido.")
+        except Exception as e:
+            print(f"[ERROR] No se pudo detener el metronomo: {e}")
+
 
 def ai_output_tensor_parse(metadata: dict):
     """Parse the output tensor into a number of detected objects, scaled to the ISP output."""
@@ -130,49 +133,68 @@ def get_drawer():
 if __name__ == "__main__":
     args = get_args()
 
-    # This must be called before instantiation of Picamera2
-    imx500 = IMX500(args.model)
-    intrinsics = imx500.network_intrinsics
-    if not intrinsics:
-        intrinsics = NetworkIntrinsics()
-        intrinsics.task = "pose estimation"
-    elif intrinsics.task != "pose estimation":
-        print("Network is not a pose estimation task", file=sys.stderr)
-        exit()
+    iniciar_metronomo()
 
-    # Override intrinsics from args
-    for key, value in vars(args).items():
-        if key == 'labels' and value is not None:
-            with open(value, 'r') as f:
+    try:
+        # --- Configurar imx500, picam2, etc ---
+        imx500 = IMX500(args.model)
+        intrinsics = imx500.network_intrinsics
+        if not intrinsics:
+            intrinsics = NetworkIntrinsics()
+            intrinsics.task = "pose estimation"
+        elif intrinsics.task != "pose estimation":
+            print("Network is not a pose estimation task", file=sys.stderr)
+            exit()
+
+        for key, value in vars(args).items():
+            if key == 'labels' and value is not None:
+                with open(value, 'r') as f:
+                    intrinsics.labels = f.read().splitlines()
+            elif hasattr(intrinsics, key) and value is not None:
+                setattr(intrinsics, key, value)
+
+        if intrinsics.inference_rate is None:
+            intrinsics.inference_rate = 10
+        if intrinsics.labels is None:
+            with open("assets/coco_labels.txt", "r") as f:
                 intrinsics.labels = f.read().splitlines()
-        elif hasattr(intrinsics, key) and value is not None:
-            setattr(intrinsics, key, value)
+        intrinsics.update_with_defaults()
 
-    # Defaults
-    if intrinsics.inference_rate is None:
-        intrinsics.inference_rate = 10
-    if intrinsics.labels is None:
-        with open("assets/coco_labels.txt", "r") as f:
-            intrinsics.labels = f.read().splitlines()
-    intrinsics.update_with_defaults()
+        if args.print_intrinsics:
+            print(intrinsics)
+            exit()
 
-    if args.print_intrinsics:
-        print(intrinsics)
-        exit()
+        drawer = get_drawer()
 
-    drawer = get_drawer()
+        picam2 = Picamera2(imx500.camera_num)
+        config = picam2.create_preview_configuration(
+            controls={'FrameRate': intrinsics.inference_rate},
+            buffer_count=12,
+            transform=Transform(hflip=True, vflip=False)
+        )
 
-    picam2 = Picamera2(imx500.camera_num)
-    config = picam2.create_preview_configuration(controls={'FrameRate': intrinsics.inference_rate}, buffer_count=12, transform=Transform(hflip=True, vflip=False))
+        imx500.show_network_fw_progress_bar()
+        picam2.start(config, show_preview=True)
+        imx500.set_auto_aspect_ratio()
+        picam2.pre_callback = picamera2_pre_callback
 
-    imx500.show_network_fw_progress_bar()
-    picam2.start(config, show_preview=True)
-    imx500.set_auto_aspect_ratio()
-    picam2.pre_callback = picamera2_pre_callback
+        # --- SOLO después de configurar todo, empieza el bucle ---
+        while True:
+            time.sleep(0.5)
 
-    while True:
-        time.sleep(0.5)
-        current_time = time.time()
-        if tick and (current_time - last_tick_time >= interval):
-            tick.play()
-            last_tick_time = current_time
+    except KeyboardInterrupt:
+        print("\n[INFO] Interrupción recibida, cerrando...")
+    finally:
+        print("[INFO] Deteniendo cámara...")
+        try:
+            picam2.stop()
+        except Exception as e:
+            print(f"[WARN] No se pudo detener picam2: {e}")
+        
+        try:
+            imx500.stop_network_task()
+        except Exception as e:
+            print(f"[WARN] No se pudo detener red neuronal: {e}")
+        
+        detener_metronomo()
+        print("[INFO] Programa finalizado correctamente.")
