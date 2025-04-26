@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from PIL import Image
 import pandas as pd
+import pygame
 
 OUTPUT_PATH = Path(__file__).parent
 ASSETS_PATH = OUTPUT_PATH / "assets" / "frame0"
@@ -21,6 +22,18 @@ LINE_CHARTS_PATHS = [ASSETS_PATH / "image_5.png", ASSETS_PATH / "image_6.png", A
 
 def relative_to_assets(path: str) -> Path:
     return ASSETS_PATH / Path(path)
+
+music_path = str(ASSETS_PATH / "musica_fondo.wav")
+pygame.mixer.init()
+
+try:
+    pygame.mixer.music.load(music_path)
+    pygame.mixer.music.play(-1)  # -1 significa repetir indefinidamente
+    print("[INFO] Música de fondo iniciada.")
+except Exception as e:
+    print(f"[ERROR] No se pudo reproducir la música: {e}")
+
+
 
 def leer_progreso_usuario():
     try:
@@ -168,6 +181,7 @@ active_button = 2
 
 def open_and_close(path):
     subprocess.Popen(["python", str(path)])
+    pygame.mixer.music.stop()
     window.after(2000, window.destroy)
 
 def activate_button(button):

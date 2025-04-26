@@ -19,6 +19,11 @@ PERFIL_GUI_PATH = BASE_PATH / "Perfil" / "build" / "gui.py"
 
 ESTADISTICAS_GUI_PATH = BASE_PATH / "Stats" / "build" / "gui.py"
 
+VIDEO1_PATH = BASE_PATH / "Video" / "build" / "Video1.py"
+VIDEO2_PATH = BASE_PATH / "Video" / "build" / "Video2.py"
+VIDEO3_PATH = BASE_PATH / "Video" / "build" / "Video3.py"
+VIDEO4_PATH = BASE_PATH / "Video" / "build" / "Video4.py"
+
 def relative_to_assets(path: str) -> Path:
     return ASSETS_PATH / Path(path)
 
@@ -78,6 +83,17 @@ def open_estadisticas_gui():
     subprocess.Popen(["python", str(ESTADISTICAS_GUI_PATH)])
     window.after(4000, window.destroy)
 
+def abrir_video_si_registrado(video_path, boton, imagen_registrado):
+    if boton.cget('image') == str(imagen_registrado):  # Solo si tiene imagen registrado
+        subprocess.Popen(["python", str(video_path)])
+        window.after(1000, window.destroy)
+    else:
+        print("[INFO] El usuario aún no ha registrado sus datos, no se puede abrir el video.")
+
+def open_video1():
+    subprocess.Popen(["python", str(VIDEO1_PATH)])
+    window.after(1000, window.destroy)  # 1 segundo después cerrar
+
 def activate_button(button):
     global active_button
     if active_button == button:
@@ -118,23 +134,33 @@ button_3.place(x=659.95849609375, y=87.8341064453125, width=154.83294677734375, 
 
 # Botones normales
 button_image_4 = PhotoImage(file=relative_to_assets("button_4.png"))
-button_4 = Button(image=button_image_4, borderwidth=0, highlightthickness=0, bg="#32457D", activebackground="#32457D", command=lambda: print("button_4 clicked"), relief="flat")
+button_4 = Button(image=button_image_4, borderwidth=0, highlightthickness=0, bg="#32457D",
+                  activebackground="#32457D", command=open_video1, relief="flat")
 button_4.place(x=54.0, y=188.0, width=259.0, height=259.0)
 
 button_image_5 = PhotoImage(file=relative_to_assets("button_5.png"))
 button_image_5_1 = PhotoImage(file=relative_to_assets("button_5.1.png"))
-button_5 = Button(image=button_image_5, borderwidth=0, highlightthickness=0, bg="#32457D", activebackground="#32457D", command=lambda: print("button_5 clicked"), relief="flat")
+button_5 = Button(image=button_image_5, borderwidth=0, highlightthickness=0, bg="#32457D",
+                  activebackground="#32457D", command=lambda: abrir_video_si_registrado(VIDEO2_PATH, button_5, button_image_5_1), relief="flat")
 button_5.place(x=340.0, y=188.0, width=259.0, height=259.0)
 
 button_image_6 = PhotoImage(file=relative_to_assets("button_6.png"))
 button_image_6_1 = PhotoImage(file=relative_to_assets("button_6.1.png"))
-button_6 = Button(image=button_image_6, borderwidth=0, highlightthickness=0, bg="#32457D", activebackground="#32457D", command=lambda: print("button_6 clicked"), relief="flat")
+button_6 = Button(image=button_image_6, borderwidth=0, highlightthickness=0, bg="#32457D",
+                  activebackground="#32457D", command=lambda: abrir_video_si_registrado(VIDEO3_PATH, button_6, button_image_6_1), relief="flat")
 button_6.place(x=54.0, y=472.0, width=259.0, height=259.0)
 
 button_image_7 = PhotoImage(file=relative_to_assets("button_7.png"))
 button_image_7_1 = PhotoImage(file=relative_to_assets("button_7.1.png"))
-button_7 = Button(image=button_image_7, borderwidth=0, highlightthickness=0, bg="#32457D", activebackground="#32457D", command=lambda: print("button_7 clicked"), relief="flat")
+button_7 = Button(image=button_image_7, borderwidth=0, highlightthickness=0, bg="#32457D",
+                  activebackground="#32457D", command=lambda: abrir_video_si_registrado(VIDEO4_PATH, button_7, button_image_7_1), relief="flat")
 button_7.place(x=340.0, y=472.0, width=259.0, height=259.0)
+
+# Reasignamos correctamente los comandos de los botones 5, 6 y 7
+button_5.config(command=lambda: abrir_video_si_registrado(VIDEO2_PATH, button_5, button_image_5_1))
+button_6.config(command=lambda: abrir_video_si_registrado(VIDEO3_PATH, button_6, button_image_6_1))
+button_7.config(command=lambda: abrir_video_si_registrado(VIDEO4_PATH, button_7, button_image_7_1))
+
 
 original_buttons_state = {
     5: button_image_5,
