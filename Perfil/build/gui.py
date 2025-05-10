@@ -84,7 +84,7 @@ def cargar_datos_usuario():
 # ------------------ Inicio de ventana -----------------------
 
 window = Tk()
-window.attributes("-fullscreen", True)
+window.overrideredirect(True)
 window.geometry("1440x900")
 window.configure(bg="#32457D")
 

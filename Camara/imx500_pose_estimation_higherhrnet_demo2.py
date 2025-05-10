@@ -3,7 +3,7 @@ import sys
 import time
 import subprocess
 import signal
-
+import subprocess
 import numpy as np
 from libcamera import Transform
 from picamera2 import CompletedRequest, MappedArray, Picamera2
@@ -12,36 +12,25 @@ from picamera2.devices.imx500.postprocess import COCODrawer
 from pathlib import Path
 import picamera2.devices.imx500.postprocess as pp
 print(pp.__file__)
+import pyaudio
+import numpy as np
 
-from picamera2.devices.imx500.postprocess_highernet import \
-    postprocess_higherhrnet
+from picamera2.devices.imx500.postprocess_highernet import postprocess_higherhrnet
+import threading
+
+tick_count = 0
+evaluar_tick = False
+mostrar_color_resultado = False
+color_resultado = (0, 0, 0, 0)
+last_m_array = None  # Referencia al último frame para pintar
 
 last_boxes = None
 last_scores = None
 last_keypoints = None
 WINDOW_SIZE_H_W = (480, 640)
 
-metronomo_process = None
-
-def iniciar_metronomo():
-    global metronomo_process
-    metronomo_path = Path(__file__).parent.parent / "Metronomo" / "Metronomo.py"
-    metronomo_process = subprocess.Popen(["python3", str(metronomo_path)])
-    print("[INFO] Metronomo iniciado.")
-
-def detener_metronomo():
-    global metronomo_process
-    if metronomo_process is not None:
-        try:
-            metronomo_process.terminate()
-            metronomo_process.wait(timeout=5)
-            print("[INFO] Metronomo detenido.")
-        except Exception as e:
-            print(f"[ERROR] No se pudo detener el metronomo: {e}")
-
 
 def ai_output_tensor_parse(metadata: dict):
-    """Parse the output tensor into a number of detected objects, scaled to the ISP output."""
     global last_boxes, last_scores, last_keypoints
     np_outputs = imx500.get_outputs(metadata=metadata, add_batch=True)
     if np_outputs is not None:
@@ -60,15 +49,16 @@ def ai_output_tensor_parse(metadata: dict):
 
 
 def ai_output_tensor_draw(request: CompletedRequest, boxes, scores, keypoints, stream='main'):
-    """Draw the detections for this request onto the ISP output."""
+    
     with MappedArray(request, stream) as m:
         if boxes is not None and len(boxes) > 0:
             drawer.annotate_image(m.array, boxes, scores,
                                   np.zeros(scores.shape), keypoints, args.detection_threshold,
                                   args.detection_threshold, request.get_metadata(), picam2, stream)
+            global last_m_array, evaluar_tick, color_resultado, mostrar_color_resultado
+            last_m_array = m.array  # Guardamos referencia al frame actual
 
             for person in keypoints:
-                # Verificamos puntos clave
                 shoulder = person[5]
                 elbow = person[7]
                 wrist = person[9]
@@ -77,18 +67,22 @@ def ai_output_tensor_draw(request: CompletedRequest, boxes, scores, keypoints, s
                     elbow[2] > args.detection_threshold and
                     wrist[2] > args.detection_threshold):
 
-                    # Vectores desde el codo
                     vec1 = np.array([shoulder[0] - elbow[0], shoulder[1] - elbow[1]])
                     vec2 = np.array([wrist[0] - elbow[0], wrist[1] - elbow[1]])
 
-                    # Producto punto y c�lculo de �ngulo
                     unit_vec1 = vec1 / np.linalg.norm(vec1)
                     unit_vec2 = vec2 / np.linalg.norm(vec2)
                     dot_product = np.dot(unit_vec1, unit_vec2)
                     angle_rad = np.arccos(np.clip(dot_product, -1.0, 1.0))
                     angle_deg = np.degrees(angle_rad)
+                    if evaluar_tick:
+                        evaluar_tick = False
+                        if 80 <= angle_deg <= 100:
+                            color_resultado = (0, 255, 0, 255)  # Verde
+                        else:
+                            color_resultado = (255, 0, 0, 255)  # Rojo
+                        mostrar_color_resultado = True
 
-                    # Determinamos color por ángulo (con tolerancia)
                     if 170 <= angle_deg <= 190:
                         color = (0, 0, 255, 255)  # Azul
                     elif 80 <= angle_deg <= 100:
@@ -98,14 +92,22 @@ def ai_output_tensor_draw(request: CompletedRequest, boxes, scores, keypoints, s
                     elif angle_deg <= 10 or angle_deg >= 350:
                         color = (255, 0, 0, 255)  # Rojo
                     else:
-                        color = (128, 128, 128, 255)  # Gris si no coincide con ninguno
+                        color = (128, 128, 128, 255)  # Gris
 
-                    # Dibujar cuadro indicador
                     m.array[10:60, 10:60] = color
+        if mostrar_color_resultado:
+            m.array[70:120, 10:60] = color_resultado            
+
+def activar_cuadro_blanco():
+    global last_m_array
+    def pintar():
+        if last_m_array is not None:
+            last_m_array[70:120, 10:60] = (255, 255, 255, 255)
+            time.sleep(0.2)
+    threading.Thread(target=pintar, daemon=True).start()
 
 
 def picamera2_pre_callback(request: CompletedRequest):
-    """Analyse the detected objects in the output tensor and draw them on the main output image."""
     boxes, scores, keypoints = ai_output_tensor_parse(request.get_metadata())
     ai_output_tensor_draw(request, boxes, scores, keypoints)
 
@@ -130,13 +132,45 @@ def get_drawer():
     return COCODrawer(categories, imx500, needs_rescale_coords=False)
 
 
+CHUNK = 1024
+RATE = 44100
+THRESHOLD = 500  # Ajustar según el volumen del tick
+
+def audio_monitor():
+    global tick_count, evaluar_tick
+    p = pyaudio.PyAudio()
+    stream = p.open(format=pyaudio.paInt16,
+                    channels=1,
+                    rate=RATE,
+                    input=True,
+                    frames_per_buffer=CHUNK)
+    print("[AUDIO] Iniciando monitoreo de ticks...")
+
+    try:
+        while True:
+            data = np.frombuffer(stream.read(CHUNK, exception_on_overflow=False), dtype=np.int16)
+            peak = np.abs(data).max()
+            if peak > THRESHOLD:
+                tick_count += 1
+                print(f"[TICK] Detectado #{tick_count} con pico: {peak}")
+                activar_cuadro_blanco()
+                if tick_count >= 4:
+                    evaluar_tick = True
+                    tick_count = 0
+            time.sleep(0.05)
+    except Exception as e:
+        print(f"[ERROR] Monitoreo de audio: {e}")
+    finally:
+        stream.stop_stream()
+        stream.close()
+        p.terminate()
+
+
+
 if __name__ == "__main__":
     args = get_args()
 
-    iniciar_metronomo()
-
     try:
-        # --- Configurar imx500, picam2, etc ---
         imx500 = IMX500(args.model)
         intrinsics = imx500.network_intrinsics
         if not intrinsics:
@@ -175,10 +209,13 @@ if __name__ == "__main__":
 
         imx500.show_network_fw_progress_bar()
         picam2.start(config, show_preview=True)
+        time.sleep(1.5)
+        # Forzar fullscreen de la ventana más reciente (asumimos que es la del preview)
+        subprocess.run(["wmctrl", "-r", ":ACTIVE:", "-b", "add,fullscreen"])
         imx500.set_auto_aspect_ratio()
         picam2.pre_callback = picamera2_pre_callback
+        threading.Thread(target=audio_monitor, daemon=True).start()
 
-        # --- SOLO después de configurar todo, empieza el bucle ---
         while True:
             time.sleep(0.5)
 
@@ -196,5 +233,5 @@ if __name__ == "__main__":
         except Exception as e:
             print(f"[WARN] No se pudo detener red neuronal: {e}")
         
-        detener_metronomo()
         print("[INFO] Programa finalizado correctamente.")
+

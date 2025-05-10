@@ -5,6 +5,27 @@ import subprocess
 
 # Variables globales
 proceso_camara = None
+metronomo_proceso = None
+
+
+def iniciar_metronomo():
+    global metronomo_proceso
+    metronomo_path = BASE_PATH / "Metronomo" / "Metronomo.py"
+    try:
+        metronomo_proceso = subprocess.Popen(["python3", str(metronomo_path)])
+        print("[INFO] Metronomo iniciado.")
+    except Exception as e:
+        print(f"[ERROR] No se pudo iniciar el metronomo: {e}")
+
+def detener_metronomo():
+    global metronomo_proceso
+    if metronomo_proceso is not None:
+        try:
+            metronomo_proceso.terminate()
+            metronomo_proceso.wait(timeout=5)
+            print("[INFO] Metronomo detenido correctamente.")
+        except Exception as e:
+            print(f"[ERROR] No se pudo detener el metronomo: {e}")
 
 # Ruta base
 BASE_PATH = Path(__file__).resolve().parent.parent.parent
@@ -18,7 +39,7 @@ def reproducir_video():
         global proceso_camara
         print("[INFO] Video terminado. Abriendo detección de pose...")
         proceso_camara = subprocess.Popen(["python3", str(CAMARA_SCRIPT_PATH)])
-        # ¡Ya no cerramos window aquí! Solo lanzamos la cámara
+        window.after(5000, iniciar_metronomo)
 
     video.preview()
     cuando_termina(video)
@@ -26,6 +47,7 @@ def reproducir_video():
 def cerrar_todo():
     global proceso_camara
     print("[INFO] Cerrando ventana principal...")
+    detener_metronomo()
     if proceso_camara is not None:
         try:
             proceso_camara.terminate()
