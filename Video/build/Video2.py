@@ -60,30 +60,30 @@ def reproducir_video():
     # Arrancar metrónomo unos segundos después
     window.after(5000, iniciar_metronomo)
 
+gui_lanzado = False  # Al inicio del script
+
 def cerrar_todo():
-    global proceso_camara
+    global proceso_camara, gui_lanzado
     print("[INFO] Cerrando ventana principal...")
     detener_metronomo()
-    if proceso_camara is not None:
-        if proceso_camara.poll() is None:
-            try:
-                proceso_camara.terminate()
-                proceso_camara.wait(timeout=5)
-                print("[INFO] Proceso de cámara detenido correctamente.")
-            except Exception as e:
-                print(f"[ERROR] No se pudo detener la cámara: {e}")
-        else:
-            print("[INFO] Cámara ya se había cerrado.")
 
+    if proceso_camara is not None and proceso_camara.poll() is None:
+        try:
+            proceso_camara.terminate()
+            proceso_camara.wait(timeout=5)
+        except Exception as e:
+            print(f"[ERROR] No se pudo detener la cámara: {e}")
     
-    try:
+    if not gui_lanzado:
+        gui_lanzado = True
         print("[INFO] Abriendo interfaz de resultados...")
-        subprocess.Popen(["python3", str(RESULT_GUI_PATH)])
-    except Exception as e:
-        print(f"[ERROR] No se pudo abrir gui.py: {e}")
-    
+        try:
+            subprocess.Popen(["python3", str(RESULT_GUI_PATH)])
+        except Exception as e:
+            print(f"[ERROR] No se pudo abrir gui.py: {e}")
+
     window.destroy()
-    window.quit()  # <- Esto fuerza la salida total del mainloop
+    window.quit()
     flag_path = BASE_PATH / "evaluaciones_completadas.flag"
     if flag_path.exists():
         flag_path.unlink()

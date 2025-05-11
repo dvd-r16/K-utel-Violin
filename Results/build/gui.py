@@ -88,7 +88,13 @@ def volver_al_menu():
     button_1.config(state="disabled")
     ruta_menu = OUTPUT_PATH.parent.parent / "Menu" / "build" / "gui.py"
     subprocess.Popen(["python3", str(ruta_menu)])
-    window.after(1000, window.destroy)  # Cierre limpio
+    
+    def cerrar_completo():
+        window.destroy()
+        window.quit()
+
+    window.after(1000, cerrar_completo)  # Espera 1 seg para cierre limpio
+
 
 
 button_image_1 = PhotoImage(
