@@ -2,7 +2,7 @@ Nombre: Margarita
 Apellido: Ajpop
 Edad: 22
 Género: Femenino
-Nivel: 3
+Nivel: 2
 [Progreso]
 Lección 1: 0,0,0,0,0,0
 Lección 2: 4,4,4,4,0,4

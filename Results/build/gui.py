@@ -12,14 +12,17 @@ from PIL import ImageTk, Image
 # from tkinter import *
 # Explicit imports to satisfy Flake8
 from tkinter import Tk, Canvas, Entry, Text, Button, PhotoImage
+from tkinter import font as tkfont
+
 
 
 OUTPUT_PATH = Path(__file__).parent
 ASSETS_PATH = OUTPUT_PATH / "assets" / "frame0"
-
+FONT_PATH = Path("/home/dvdr/K-utel-Violin/Fonts/Londrina_Solid/LondrinaSolid-Black.ttf")   
 BASE_PATH = Path(__file__).resolve().parent.parent.parent
 USER_SELECTED_PATH = BASE_PATH / "usuario_seleccionado.txt"
 USERS_PATH = BASE_PATH / "Login" / "usuarios"
+
 
 
 
@@ -32,6 +35,9 @@ window = Tk()
 window.geometry("1440x900")
 window.overrideredirect(True)
 window.configure(bg = "#32457D")
+
+
+font_to_use = ("Londrina Solid Black", 96)
 
 
 canvas = Canvas(
@@ -149,6 +155,10 @@ def generar_graficas_resultado():
         ax2.set_facecolor('#203262')
 
         ax2.plot(range(1, len(valores)+1), valores, marker='o', color='#6ce5e8', linewidth=2)
+                # Línea de referencia punteada en 8.0 (umbral)
+        ax2.axhline(y=8.0, color='white', linestyle='dashed', linewidth=1.5)
+        ax2.text(len(valores)+0.3, 8.0, "Meta", color='white', fontsize=9, va='center')
+
         ax2.set_ylim(0, 10)
         ax2.set_xlim(0.5, 10.5)
         ax2.set_xticks([])
@@ -163,6 +173,34 @@ def generar_graficas_resultado():
     except Exception as e:
         print(f"[ERROR] Al generar gráfica de línea: {e}")
 
+def actualizar_nivel_usuario_si_corresponde():
+    try:
+        with open(USER_SELECTED_PATH, 'r') as f:
+            user_id = f.read().strip()
+        user_file = USERS_PATH / f"user_{user_id}.txt"
+
+        # Cargar el porcentaje más reciente en Lección 2
+        porcentaje = cargar_estrellas_con_opacidad()
+        if porcentaje < 80:
+            print("[INFO] Puntaje insuficiente para subir de nivel.")
+            return
+
+        with open(user_file, 'r', encoding='utf-8') as f:
+            lineas = f.readlines()
+
+        for i, linea in enumerate(lineas):
+            if linea.startswith("Nivel:"):
+                nivel_actual = int(linea.split(":")[1].strip())
+                if nivel_actual < 2:
+                    lineas[i] = "Nivel: 2\n"
+                    with open(user_file, 'w', encoding='utf-8') as f:
+                        f.writelines(lineas)
+                    print("[INFO] Nivel del usuario actualizado a 2.")
+                else:
+                    print("[INFO] Nivel actual ya es 2 o superior.")
+                break
+    except Exception as e:
+        print(f"[ERROR] Al actualizar el nivel del usuario: {e}")
 
 
 def cargar_estrellas_con_opacidad():
@@ -215,7 +253,9 @@ button_1 = Button(
     borderwidth=0,
     highlightthickness=0,
     command=volver_al_menu,
-    relief="flat"
+    relief="flat",
+    bg="#32457D",
+    activebackground="#32457D"
 )
 button_1.place(
     x=976.0,
@@ -224,16 +264,42 @@ button_1.place(
     height=73.9782485961914
 )
 
+porcentaje = cargar_estrellas_con_opacidad()
+estrellas_visibles = porcentaje // 20  # 0 a 5
 
+imagenes_estrellas = []
+archivos = ["image_4.png", "image_5.png", "image_6.png", "image_7.png", "image_8.png"]
+posiciones = [(320.0, 271.0), (510.0, 332.0), (720.0, 263.0), (932.0, 332.0), (1120.0, 268.0)]
+
+for i in range(5):
+    visible = i < estrellas_visibles
+    img, img_id = cargar_estrella_opaca(relative_to_assets(archivos[i]), posiciones[i], visible)
+    imagenes_estrellas.append((img, img_id))
+
+# Mensaje según porcentaje
+if porcentaje == 100:
+    mensaje = "¡Felicidades!"
+elif porcentaje >= 80:
+    mensaje = "¡Lo lograste!"
+elif porcentaje >= 60:
+    mensaje = "Ya falta poco"
+elif porcentaje >= 40:
+    mensaje = "Tú puedes, una vez más"
+elif porcentaje >= 20:
+    mensaje = "Intentalo de nuevo..."
+else:
+    mensaje = "¡No te desanimes!"
 
 canvas.create_text(
-    313.0,
-    27.0,
-    anchor="nw",
-    text="BUEN TRABAJO!",
+    720.0,  # centro horizontal del canvas (mitad de 1440)
+    100.0,  # ajusta verticalmente donde quieras que aparezca
+    anchor="center",
+    text=mensaje,
     fill="#FFFFFF",
-    font=("LondrinaSolid Black", 96 * -1)
+    font=font_to_use
 )
+
+
 generar_graficas_resultado()
 image_image_2 = PhotoImage(
     file=relative_to_assets("image_2.png"))
@@ -251,17 +317,10 @@ image_3 = canvas.create_image(
     image=image_image_3
 )
 
-porcentaje = cargar_estrellas_con_opacidad()
-estrellas_visibles = porcentaje // 20  # 0 a 5
 
-imagenes_estrellas = []
-archivos = ["image_4.png", "image_5.png", "image_6.png", "image_7.png", "image_8.png"]
-posiciones = [(320.0, 271.0), (510.0, 332.0), (720.0, 263.0), (932.0, 332.0), (1120.0, 268.0)]
 
-for i in range(5):
-    visible = i < estrellas_visibles
-    img, img_id = cargar_estrella_opaca(relative_to_assets(archivos[i]), posiciones[i], visible)
-    imagenes_estrellas.append((img, img_id))
+actualizar_nivel_usuario_si_corresponde()
+
 
 window.resizable(False, False)
 window.mainloop()
