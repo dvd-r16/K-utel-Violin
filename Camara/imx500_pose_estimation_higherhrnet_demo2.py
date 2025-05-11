@@ -1,9 +1,11 @@
 import argparse
 import sys
+import os
 import time
 import subprocess
 import signal
 import subprocess
+import socket
 import numpy as np
 from libcamera import Transform
 from picamera2 import CompletedRequest, MappedArray, Picamera2
@@ -23,6 +25,13 @@ evaluar_tick = False
 mostrar_color_resultado = False
 color_resultado = (0, 0, 0, 0)
 last_m_array = None  # Referencia al último frame para pintar
+mostrar_tick_azul = False
+cerrar_programa = False
+
+tick_total = 0
+evaluaciones_realizadas = 0
+resultados = []
+
 
 last_boxes = None
 last_scores = None
@@ -31,6 +40,7 @@ WINDOW_SIZE_H_W = (480, 640)
 
 
 def ai_output_tensor_parse(metadata: dict):
+    
     global last_boxes, last_scores, last_keypoints
     np_outputs = imx500.get_outputs(metadata=metadata, add_batch=True)
     if np_outputs is not None:
@@ -47,6 +57,12 @@ def ai_output_tensor_parse(metadata: dict):
             last_scores = np.array(scores)
     return last_boxes, last_scores, last_keypoints
 
+def borrar_color_resultado():
+    global mostrar_color_resultado, last_m_array
+    mostrar_color_resultado = False
+    if last_m_array is not None:
+        last_m_array[10:60, 70:120] = (255, 255, 255, 255)  # Limpiar resultado (cuadro 2)
+
 
 def ai_output_tensor_draw(request: CompletedRequest, boxes, scores, keypoints, stream='main'):
     
@@ -56,6 +72,8 @@ def ai_output_tensor_draw(request: CompletedRequest, boxes, scores, keypoints, s
                                   np.zeros(scores.shape), keypoints, args.detection_threshold,
                                   args.detection_threshold, request.get_metadata(), picam2, stream)
             global last_m_array, evaluar_tick, color_resultado, mostrar_color_resultado
+            global evaluaciones_realizadas, resultados
+
             last_m_array = m.array  # Guardamos referencia al frame actual
 
             for person in keypoints:
@@ -77,11 +95,22 @@ def ai_output_tensor_draw(request: CompletedRequest, boxes, scores, keypoints, s
                     angle_deg = np.degrees(angle_rad)
                     if evaluar_tick:
                         evaluar_tick = False
-                        if 80 <= angle_deg <= 100:
-                            color_resultado = (0, 255, 0, 255)  # Verde
-                        else:
-                            color_resultado = (255, 0, 0, 255)  # Rojo
+                        bueno = 80 <= angle_deg <= 100
+                        color_resultado = (0, 255, 0, 255) if bueno else (255, 0, 0, 255)
                         mostrar_color_resultado = True
+                        resultados.append(bueno)
+                        evaluaciones_realizadas += 1
+
+                        print(f"[EVAL] {'✔️ BUENO' if bueno else '❌ MALO'} | Evaluación #{evaluaciones_realizadas}/20")
+
+                        if evaluaciones_realizadas >= 20:
+                            print("[FIN] Se completaron 20 evaluaciones. Esperando instrucciones del proceso padre...")
+                            global cerrar_programa
+                            cerrar_programa = True
+                            # Señal para el padre
+                            with open("evaluaciones_completadas.flag", "w") as f:
+                                f.write("done")
+
 
                     if 170 <= angle_deg <= 190:
                         color = (0, 0, 255, 255)  # Azul
@@ -95,16 +124,27 @@ def ai_output_tensor_draw(request: CompletedRequest, boxes, scores, keypoints, s
                         color = (128, 128, 128, 255)  # Gris
 
                     m.array[10:60, 10:60] = color
-        if mostrar_color_resultado:
-            m.array[70:120, 10:60] = color_resultado            
 
-def activar_cuadro_blanco():
-    global last_m_array
-    def pintar():
-        if last_m_array is not None:
-            last_m_array[70:120, 10:60] = (255, 255, 255, 255)
-            time.sleep(0.2)
-    threading.Thread(target=pintar, daemon=True).start()
+                    # Cuadro 3 – indicador visual de tick azul (parte inferior derecha)
+                    if mostrar_tick_azul:
+                        m.array[70:120, 70:120] = (0, 0, 255, 255)  # Azul
+                    else:
+                        m.array[70:120, 70:120] = (255, 255, 255, 255)  # Blanco
+
+
+        if mostrar_color_resultado:
+            m.array[10:60, 70:120] = color_resultado
+            threading.Timer(1.5, borrar_color_resultado).start()        
+
+def activar_cuadro_tick():
+    global mostrar_tick_azul
+    mostrar_tick_azul = True
+    def desactivar_tick():
+        global mostrar_tick_azul
+        time.sleep(0.2)
+        mostrar_tick_azul = False
+    threading.Thread(target=desactivar_tick, daemon=True).start()
+
 
 
 def picamera2_pre_callback(request: CompletedRequest):
@@ -153,7 +193,7 @@ def audio_monitor():
             if peak > THRESHOLD:
                 tick_count += 1
                 print(f"[TICK] Detectado #{tick_count} con pico: {peak}")
-                activar_cuadro_blanco()
+                activar_cuadro_tick()
                 if tick_count >= 4:
                     evaluar_tick = True
                     tick_count = 0
@@ -164,11 +204,56 @@ def audio_monitor():
         stream.stop_stream()
         stream.close()
         p.terminate()
+        
+def manejar_terminacion(signum, frame):
+    print("[SEÑAL] Terminación recibida, limpiando cámara...")
+    detener_componentes()
+    sys.exit(0)
 
+def detener_componentes():
+    try:
+        picam2.stop()
+    except Exception as e:
+        print(f"[WARN] Error al detener picam2: {e}")
+    try:
+        imx500.stop_network_task()
+    except Exception as e:
+        print(f"[WARN] Error al detener red neuronal: {e}")
+
+def socket_tick_listener():
+    global tick_count, evaluar_tick, tick_total, cerrar_programa
+    server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server_socket.bind(('localhost', 9999))
+    server_socket.listen(1)
+    print("[SOCKET] Esperando conexión del metrónomo...")
+    conn, _ = server_socket.accept()
+    print("[SOCKET] Conectado al metrónomo.")
+
+    try:
+        while not cerrar_programa:
+            data = conn.recv(1024)
+            if not data:
+                break
+            if b"tick" in data:
+                tick_count += 1
+                print(f"[TICK] Señal recibida #{tick_count}")
+                activar_cuadro_tick()
+                if tick_count >= 4:
+                    tick_count = 0
+                    evaluar_tick = True
+                    tick_total += 4
+                    print(f"[TICK] Total acumulado: {tick_total}")
+    except Exception as e:
+        print(f"[ERROR] Socket tick listener: {e}")
+    finally:
+        conn.close()
+        server_socket.close()
 
 
 if __name__ == "__main__":
     args = get_args()
+    signal.signal(signal.SIGTERM, manejar_terminacion)
+
 
     try:
         imx500 = IMX500(args.model)
@@ -214,7 +299,7 @@ if __name__ == "__main__":
         subprocess.run(["wmctrl", "-r", ":ACTIVE:", "-b", "add,fullscreen"])
         imx500.set_auto_aspect_ratio()
         picam2.pre_callback = picamera2_pre_callback
-        threading.Thread(target=audio_monitor, daemon=True).start()
+        threading.Thread(target=socket_tick_listener, daemon=True).start()
 
         while True:
             time.sleep(0.5)
@@ -234,4 +319,6 @@ if __name__ == "__main__":
             print(f"[WARN] No se pudo detener red neuronal: {e}")
         
         print("[INFO] Programa finalizado correctamente.")
+
+
 
