@@ -51,7 +51,7 @@ ARDUINO_URL = "http://192.168.4.1"  # Cambia si es necesario
 
 estado_imu = "Desconocido"
 
-BASE_PATH = Path(__file__).resolve().parent
+BASE_PATH = Path(__file__).resolve().parent.parent
 USER_SELECTED_PATH = BASE_PATH / "usuario_seleccionado.txt"
 USERS_PATH = BASE_PATH / "Login" / "usuarios"
 

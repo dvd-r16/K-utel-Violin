@@ -53,6 +53,117 @@ image_1 = canvas.create_image(
     image=image_image_1
 )
 
+def leer_progreso_usuario():
+    try:
+        with open(USER_SELECTED_PATH, 'r') as f:
+            user_id = f.read().strip()
+        user_file = USERS_PATH / f"user_{user_id}.txt"
+
+        progreso = []
+        with open(user_file, 'r', encoding='utf-8') as f:
+            lineas = f.readlines()
+
+        grabar = False
+        for linea in lineas:
+            if '[Progreso]' in linea:
+                grabar = True
+                continue
+            if grabar and 'Lección' in linea:
+                datos = linea.split(':')[1].strip()
+                valores = list(map(int, datos.split(',')))
+                progreso.append(valores)
+
+        return progreso
+    except Exception as e:
+        print(f"[ERROR] Al leer el progreso: {e}")
+        return []
+
+def generar_graficas_resultado():
+    from matplotlib import pyplot as plt
+    import numpy as np
+
+    progreso = leer_progreso_usuario()
+    if not progreso:
+        return
+
+    # RADAR
+    etiquetas = ["Brazo Izq", "Hombro", "Cuello", "Brazo der", "Arco", "Violin"]
+    num_vars = len(etiquetas)
+    angles = np.linspace(0, 2 * np.pi, num_vars, endpoint=False).tolist()
+    angles += angles[:1]
+
+    fig, ax = plt.subplots(figsize=(4, 4), subplot_kw=dict(polar=True))  # Tamaño más compacto
+    fig.patch.set_facecolor('#203262')
+    ax.set_facecolor('#203262')
+    ax.set_theta_offset(np.pi / 2)
+    ax.set_theta_direction(-1)
+
+    ax.set_thetagrids(np.degrees(angles[:-1]), etiquetas, color='white')
+    if len(progreso) >= 2:
+        datos = progreso[1] + [progreso[1][0]]  # Duplica solo una vez para cierre correcto
+        max_val = max(progreso[1])
+
+
+        escala_max = max(2, ((max_val + 1) // 2 + 1) * 2)  # redondea al siguiente múltiplo de 2
+
+        ax.set_ylim(0, escala_max)
+        ax.set_yticks(np.arange(2, escala_max + 1, 2))
+        ax.set_yticklabels([str(i) for i in np.arange(2, escala_max + 1, 2)], color='white', size=8)
+
+        # redibujar los hexágonos punteados adaptados
+        for r in np.arange(2, escala_max + 1, 2):
+            ax.plot(angles, [r]*len(angles), color='gray', linewidth=1.2, linestyle='dotted')
+
+        ax.plot(angles, datos, linewidth=2.5, color='#5ce1e6')
+        ax.fill(angles, datos, alpha=0.1, color='#5ce1e6')
+
+    ax.tick_params(colors='white')
+    ax.yaxis.grid(False)
+
+    for r in [2, 4, 6, 8, 10]:
+        ax.plot(angles, [r]*len(angles), color='gray', linewidth=1.2, linestyle='dotted')
+    ax.spines['polar'].set_visible(False)
+
+    if len(progreso) >= 2:
+        datos = progreso[1] + [progreso[1][0]]  # Lección 2
+        ax.plot(angles, datos, linewidth=2.5, color='#5ce1e6')
+        ax.fill(angles, datos, alpha=0.1, color='#5ce1e6')
+
+    radar_path = ASSETS_PATH / "image_2.png"
+    fig.savefig(radar_path, dpi=100, bbox_inches='tight')
+    plt.close(fig)
+
+    # LÍNEA
+    try:
+        with open(USER_SELECTED_PATH, 'r') as f:
+            user_id = f.read().strip()
+        csv_path = USERS_PATH / f"user_{user_id}.csv"
+        df = pd.read_csv(csv_path)
+
+        df['leccion'] = df['leccion'].str.extract(r'(\d+)').astype(float)
+        df_leccion = df[df['leccion'] == 2].sort_values(by='intento', ascending=False).head(10).sort_values(by='intento')
+
+        valores = df_leccion['valor'].tolist()
+        fig2, ax2 = plt.subplots(figsize=(4.8, 2.5))
+        fig2.patch.set_facecolor('#203262')
+        ax2.set_facecolor('#203262')
+
+        ax2.plot(range(1, len(valores)+1), valores, marker='o', color='#6ce5e8', linewidth=2)
+        ax2.set_ylim(0, 10)
+        ax2.set_xlim(0.5, 10.5)
+        ax2.set_xticks([])
+        ax2.set_yticks([0, 2, 4, 6, 8, 10])
+        ax2.tick_params(colors='white')
+        for spine in ax2.spines.values():
+            spine.set_color('#203262')
+
+        linea_path = ASSETS_PATH / "image_3.png"
+        fig2.savefig(linea_path, dpi=100, bbox_inches='tight')
+        plt.close(fig2)
+    except Exception as e:
+        print(f"[ERROR] Al generar gráfica de línea: {e}")
+
+
 
 def cargar_estrellas_con_opacidad():
     try:
@@ -123,7 +234,7 @@ canvas.create_text(
     fill="#FFFFFF",
     font=("LondrinaSolid Black", 96 * -1)
 )
-
+generar_graficas_resultado()
 image_image_2 = PhotoImage(
     file=relative_to_assets("image_2.png"))
 image_2 = canvas.create_image(
