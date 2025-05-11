@@ -4,7 +4,7 @@ Edad: 22
 Género: Femenino
 Nivel: 2
 [Progreso]
-Lección 1: 0,0,0,0,0,0
+Lección 1: 3,3,3,3,0,3
 Lección 2: 4,4,4,4,0,4
 Lección 3: 0,0,0,0,0,0
 Lección 4: 0,0,0,0,0,0

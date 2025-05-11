@@ -74,7 +74,7 @@ def generar_grafica_lineas():
         # Normalizar columna 'leccion'
         df['leccion'] = df['leccion'].str.extract(r'(\d+)').astype(float)
 
-        for leccion in [2, 3, 4]:
+        for leccion in [1, 2, 3]:
             df_leccion = df[df['leccion'] == leccion].sort_values(by='intento', ascending=False).head(10).sort_values(by='intento')
             valores = df_leccion['valor'].tolist()
             print(f"[INFO] Lección {leccion}: {valores}")
@@ -95,8 +95,9 @@ def generar_grafica_lineas():
             for spine in ax.spines.values():
                 spine.set_color('#203262')
 
-            fig.savefig(LINE_CHARTS_PATHS[leccion - 2], dpi=100, bbox_inches='tight', transparent=False)
+            fig.savefig(LINE_CHARTS_PATHS[leccion - 1], dpi=100, bbox_inches='tight', transparent=False)
             plt.close(fig)
+
     except Exception as e:
         print(f"[ERROR] Al generar gráficas de líneas: {e}")
 
