@@ -5,6 +5,9 @@
 import subprocess
 import time
 from pathlib import Path
+import os  # arriba
+import pandas as pd
+from PIL import ImageTk, Image
 
 # from tkinter import *
 # Explicit imports to satisfy Flake8
@@ -13,6 +16,11 @@ from tkinter import Tk, Canvas, Entry, Text, Button, PhotoImage
 
 OUTPUT_PATH = Path(__file__).parent
 ASSETS_PATH = OUTPUT_PATH / "assets" / "frame0"
+
+BASE_PATH = Path(__file__).resolve().parent.parent.parent
+USER_SELECTED_PATH = BASE_PATH / "usuario_seleccionado.txt"
+USERS_PATH = BASE_PATH / "Login" / "usuarios"
+
 
 
 def relative_to_assets(path: str) -> Path:
@@ -45,11 +53,43 @@ image_1 = canvas.create_image(
     image=image_image_1
 )
 
+
+def cargar_estrellas_con_opacidad():
+    try:
+        with open(USER_SELECTED_PATH, 'r') as f:
+            user_id = f.read().strip()
+        csv_file = USERS_PATH / f"user_{user_id}.csv"
+
+        df = pd.read_csv(csv_file)
+        df_leccion2 = df[df['leccion'].str.contains("Lección 2", na=False)]
+
+        if df_leccion2.empty:
+            print("[INFO] No hay registros en Lección 2")
+            return 0
+
+        valor = df_leccion2.sort_values(by="intento", ascending=False).iloc[0]["valor"]
+        porcentaje = int(round(valor / 10 * 100))
+        print(f"[INFO] Último puntaje: {valor} → {porcentaje}%")
+        return porcentaje
+    except Exception as e:
+        print(f"[ERROR] Al cargar estrellas: {e}")
+        return 0
+
+def cargar_estrella_opaca(file_path, position, visible):
+    img = Image.open(file_path).convert("RGBA")
+    if not visible:
+        img.putalpha(0)
+    photo = ImageTk.PhotoImage(img)
+    image_id = canvas.create_image(*position, image=photo)
+    return photo, image_id
+
 def volver_al_menu():
+    print("[DEBUG] Botón presionado: volver al menú")
+    button_1.config(state="disabled")
     ruta_menu = OUTPUT_PATH.parent.parent / "Menu" / "build" / "gui.py"
     subprocess.Popen(["python3", str(ruta_menu)])
-    # Esperar 1 segundo y luego cerrar esta ventana
-    window.after(1000, window.destroy)
+    window.after(1000, window.destroy)  # Cierre limpio
+
 
 button_image_1 = PhotoImage(
     file=relative_to_assets("button_1.png"))
@@ -94,44 +134,17 @@ image_3 = canvas.create_image(
     image=image_image_3
 )
 
-image_image_4 = PhotoImage(
-    file=relative_to_assets("image_4.png"))
-image_4 = canvas.create_image(
-    320.0,
-    271.0,
-    image=image_image_4
-)
+porcentaje = cargar_estrellas_con_opacidad()
+estrellas_visibles = porcentaje // 20  # 0 a 5
 
-image_image_5 = PhotoImage(
-    file=relative_to_assets("image_5.png"))
-image_5 = canvas.create_image(
-    510.0,
-    332.0,
-    image=image_image_5
-)
+imagenes_estrellas = []
+archivos = ["image_4.png", "image_5.png", "image_6.png", "image_7.png", "image_8.png"]
+posiciones = [(320.0, 271.0), (510.0, 332.0), (720.0, 263.0), (932.0, 332.0), (1120.0, 268.0)]
 
-image_image_6 = PhotoImage(
-    file=relative_to_assets("image_6.png"))
-image_6 = canvas.create_image(
-    720.0,
-    263.0,
-    image=image_image_6
-)
+for i in range(5):
+    visible = i < estrellas_visibles
+    img, img_id = cargar_estrella_opaca(relative_to_assets(archivos[i]), posiciones[i], visible)
+    imagenes_estrellas.append((img, img_id))
 
-image_image_7 = PhotoImage(
-    file=relative_to_assets("image_7.png"))
-image_7 = canvas.create_image(
-    932.0,
-    332.0,
-    image=image_image_7
-)
-
-image_image_8 = PhotoImage(
-    file=relative_to_assets("image_8.png"))
-image_8 = canvas.create_image(
-    1120.0,
-    268.0,
-    image=image_image_8
-)
 window.resizable(False, False)
 window.mainloop()

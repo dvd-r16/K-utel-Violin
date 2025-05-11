@@ -17,11 +17,15 @@ print(pp.__file__)
 import pyaudio
 import numpy as np
 import pygame
+from PIL import Image, ImageTk
+from tkinter import PhotoImage 
 
 from picamera2.devices.imx500.postprocess_highernet import postprocess_higherhrnet
 import threading
 
 SCRIPT_DIR = Path(__file__).resolve().parent
+# Ruta base
+ASSETS_PATH = SCRIPT_DIR
 
 
 tick_count = 0
@@ -31,6 +35,7 @@ color_resultado = (0, 0, 0, 0)
 last_m_array = None  # Referencia al último frame para pintar
 mostrar_tick_azul = False
 cerrar_programa = False
+temporizador_activo = False
 
 tick_total = 0
 evaluaciones_realizadas = 0
@@ -46,19 +51,45 @@ ARDUINO_URL = "http://192.168.4.1"  # Cambia si es necesario
 
 estado_imu = "Desconocido"
 
+BASE_PATH = Path(__file__).resolve().parent
+USER_SELECTED_PATH = BASE_PATH / "usuario_seleccionado.txt"
+USERS_PATH = BASE_PATH / "Login" / "usuarios"
+
 
 pygame.mixer.init()
 sound_correct = pygame.mixer.Sound(str(SCRIPT_DIR / "Correct.wav"))
 sound_incorrect = pygame.mixer.Sound(str(SCRIPT_DIR / "Incorrect.wav"))
+
+def cargar_imagen(path, size=(50, 50)):
+    return np.array(Image.open(ASSETS_PATH / path).resize(size).convert("RGBA"))
+
+# Imágenes para los cuadros
+imagen_idle = cargar_imagen("Idle.png")
+imagen_correcto = cargar_imagen("Correct.png")
+imagen_incorrecto = cargar_imagen("Incorrect.png")
+imagen_tick_on = cargar_imagen("Tick_on.png")
+imagen_tick_off = cargar_imagen("Tick_off.png")
+
+def pegar_imagen_en_array(m_array, imagen_np, x, y):
+    h, w = imagen_np.shape[:2]
+    m_array[y:y+h, x:x+w] = imagen_np
 
 def obtener_estado_imu():
     global estado_imu
     try:
         res = requests.get(f"{ARDUINO_URL}/estado", timeout=0.5)
         texto = res.text.strip()
-        estado_imu = texto  # Guardar texto completo
+        estado_imu = texto
+        print("[IMU]", estado_imu)  # <-- Aquí
     except:
         estado_imu = "Error de conexión"
+
+    if "correcta" in estado_imu.lower():
+        print("[DECISIÓN] Cuadro 1 = VERDE")
+    elif "incorrecta" in estado_imu.lower():
+        print("[DECISIÓN] Cuadro 1 = ROJO")
+    else:
+        print("[DECISIÓN] Cuadro 1 = GRIS/Blanco")
 
 
 
@@ -83,6 +114,7 @@ def ai_output_tensor_parse(metadata: dict):
 def borrar_color_resultado():
     global mostrar_color_resultado, last_m_array
     mostrar_color_resultado = False
+    temporizador_activo = False
     if last_m_array is not None:
         last_m_array[10:60, 70:120] = (255, 255, 255, 255)  # Limpiar resultado (cuadro 2)
 
@@ -91,9 +123,9 @@ def ai_output_tensor_draw(request: CompletedRequest, boxes, scores, keypoints, s
     
     with MappedArray(request, stream) as m:
         # Cuadro 1 – IMU (arriba izquierda)
-        if "correcta" in estado_imu.lower():
+        if "posicion correcta" in estado_imu.lower():
             m.array[10:60, 10:60] = (0, 255, 0, 255)  # Verde
-        elif "incorrecta" in estado_imu.lower():
+        elif "posicion incorrecta (horizontal)" in estado_imu.lower():
             m.array[10:60, 10:60] = (255, 0, 0, 255)  # Rojo
         else:
             m.array[10:60, 10:60] = (255, 255, 255, 255)  # Blanco si no hay info aún
@@ -135,26 +167,32 @@ def ai_output_tensor_draw(request: CompletedRequest, boxes, scores, keypoints, s
                         print(f"[EVAL] {'✔️ BUENO' if bueno else '❌ MALO'} | Evaluación #{evaluaciones_realizadas}/20")
 
                         if evaluaciones_realizadas >= 20:
+                            registrar_resultado(leccion_idx=1, aciertos=resultados.count(True))  # Lección 2
+                            distribuir_puntos_en_txt(leccion_idx=1, aciertos=resultados.count(True))
                             print("[FIN] Se completaron 20 evaluaciones. Esperando instrucciones del proceso padre...")
                             global cerrar_programa
                             cerrar_programa = True
                             # Señal para el padre
                             with open("evaluaciones_completadas.flag", "w") as f:
                                 f.write("done")
+                    global temporizador_activo
+                    if mostrar_color_resultado:
+                        imagen_a_usar = imagen_correcto if color_resultado == (0, 255, 0, 255) else imagen_incorrecto
+                        if not temporizador_activo:
+                            temporizador_activo = True
+                            threading.Timer(1.5, borrar_color_resultado).start()
+                    else:
+                        imagen_a_usar = imagen_idle
+
+                    pegar_imagen_en_array(m.array, imagen_a_usar, x=70, y=10)
 
 
 
 
                     # Cuadro 3 – indicador visual de tick azul (parte inferior derecha)
-                    if mostrar_tick_azul:
-                        m.array[70:120, 70:120] = (0, 0, 255, 255)  # Azul
-                    else:
-                        m.array[70:120, 70:120] = (255, 255, 255, 255)  # Blanco
-
-
-        if mostrar_color_resultado:
-            m.array[10:60, 70:120] = color_resultado
-            threading.Timer(1.5, borrar_color_resultado).start()        
+                    imagen_tick = imagen_tick_on if mostrar_tick_azul else imagen_tick_off
+                    pegar_imagen_en_array(m.array, imagen_tick, x=70, y=70)
+       
 
 def activar_cuadro_tick():
     global mostrar_tick_azul
@@ -272,6 +310,67 @@ def socket_tick_listener():
         conn.close()
         server_socket.close()
 
+def registrar_resultado(leccion_idx, aciertos):
+    from datetime import datetime
+    import csv
+
+    try:
+        with open(USER_SELECTED_PATH, 'r') as f:
+            user_id = f.read().strip()
+        csv_file = USERS_PATH / f"user_{user_id}.csv"
+
+        valor = round((aciertos / 20) * 10, 2)
+        intento = 1
+        if csv_file.exists():
+            with open(csv_file, 'r') as f:
+                reader = list(csv.DictReader(f))
+                if reader:
+                    ultimos = [int(r["intento"]) for r in reader if r["leccion"] == f"Lección {leccion_idx + 1}"]
+                    intento = max(ultimos) + 1
+
+        with open(csv_file, 'a', newline='') as f:
+            writer = csv.writer(f)
+            if csv_file.stat().st_size == 0:
+                writer.writerow(["leccion", "intento", "valor", "fecha"])
+            writer.writerow([f"Lección {leccion_idx + 1}", intento, valor, datetime.now().isoformat()])
+        print(f"[CSV] Resultado registrado: Lección {leccion_idx + 1}, Valor: {valor}")
+    except Exception as e:
+        print(f"[ERROR] Al guardar resultado en CSV: {e}")
+
+def distribuir_puntos_en_txt(leccion_idx, aciertos):
+    try:
+        with open(USER_SELECTED_PATH, 'r') as f:
+            user_id = f.read().strip()
+        user_file = USERS_PATH / f"user_{user_id}.txt"
+
+        with open(user_file, 'r', encoding='utf-8') as f:
+            lineas = f.readlines()
+
+        progreso_encontrado = False
+        for i, linea in enumerate(lineas):
+            if linea.startswith(f"Lección {leccion_idx + 1}:"):
+                progreso_encontrado = True
+                partes = linea.strip().split(":")
+                valores = list(map(int, partes[1].strip().split(",")))
+
+                nuevo_puntaje = round((aciertos / 20) * 4)
+                indices_a_actualizar = [0, 1, 2, 3, 5]  # Brazo izq, hombro, cuello, brazo der, violin
+
+                for idx in indices_a_actualizar:
+                    valores[idx] = max(valores[idx], nuevo_puntaje)
+
+                lineas[i] = f"Lección {leccion_idx + 1}: {','.join(map(str, valores))}\n"
+                break
+
+        if progreso_encontrado:
+            with open(user_file, 'w', encoding='utf-8') as f:
+                f.writelines(lineas)
+            print(f"[TXT] Progreso actualizado con valor máximo en Lección {leccion_idx + 1}")
+        else:
+            print("[WARN] No se encontró la lección para actualizar.")
+    except Exception as e:
+        print(f"[ERROR] Al actualizar progreso en TXT: {e}")
+
 
 if __name__ == "__main__":
     args = get_args()
@@ -351,6 +450,3 @@ if __name__ == "__main__":
             print(f"[WARN] No se pudo detener red neuronal: {e}")
         
         print("[INFO] Programa finalizado correctamente.")
-
-
-
