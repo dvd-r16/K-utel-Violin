@@ -19,7 +19,8 @@ def launch_main_gui():
     window.after(2000, close_splash)
 
 window = Tk()
-window.overrideredirect(True)
+#window.overrideredirect(True)
+window.attributes("-fullscreen", True)
 window.geometry("1536x864")
 window.configure(bg="#FFFFFF")
 

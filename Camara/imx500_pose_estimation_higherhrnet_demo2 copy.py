@@ -4,8 +4,8 @@ import os
 import time
 import subprocess
 import signal
+import subprocess
 import socket
-import requests
 import numpy as np
 from libcamera import Transform
 from picamera2 import CompletedRequest, MappedArray, Picamera2
@@ -42,23 +42,9 @@ last_scores = None
 last_keypoints = None
 WINDOW_SIZE_H_W = (480, 640)
 
-ARDUINO_URL = "http://192.168.4.1"  # Cambia si es necesario
-
-estado_imu = "Desconocido"
-
-
 pygame.mixer.init()
 sound_correct = pygame.mixer.Sound(str(SCRIPT_DIR / "Correct.wav"))
 sound_incorrect = pygame.mixer.Sound(str(SCRIPT_DIR / "Incorrect.wav"))
-
-def obtener_estado_imu():
-    global estado_imu
-    try:
-        res = requests.get(f"{ARDUINO_URL}/estado", timeout=0.5)
-        texto = res.text.strip()
-        estado_imu = texto  # Guardar texto completo
-    except:
-        estado_imu = "Error de conexión"
 
 
 
@@ -90,13 +76,6 @@ def borrar_color_resultado():
 def ai_output_tensor_draw(request: CompletedRequest, boxes, scores, keypoints, stream='main'):
     
     with MappedArray(request, stream) as m:
-        # Cuadro 1 – IMU (arriba izquierda)
-        if "correcta" in estado_imu.lower():
-            m.array[10:60, 10:60] = (0, 255, 0, 255)  # Verde
-        elif "incorrecta" in estado_imu.lower():
-            m.array[10:60, 10:60] = (255, 0, 0, 255)  # Rojo
-        else:
-            m.array[10:60, 10:60] = (255, 255, 255, 255)  # Blanco si no hay info aún
         if boxes is not None and len(boxes) > 0:
             drawer.annotate_image(m.array, boxes, scores,
                                   np.zeros(scores.shape), keypoints, args.detection_threshold,
@@ -323,15 +302,6 @@ if __name__ == "__main__":
         imx500.set_auto_aspect_ratio()
         picam2.pre_callback = picamera2_pre_callback
         threading.Thread(target=socket_tick_listener, daemon=True).start()
-
-        from threading import Thread
-
-        def hilo_estado_imu():
-            while True:
-                obtener_estado_imu()
-                time.sleep(0.5)
-
-        Thread(target=hilo_estado_imu, daemon=True).start()
 
         while True:
             time.sleep(0.5)
