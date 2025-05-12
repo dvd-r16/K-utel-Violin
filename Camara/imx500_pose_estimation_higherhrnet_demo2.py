@@ -70,6 +70,9 @@ imagen_correcto = cargar_imagen("Correct.png")
 imagen_incorrecto = cargar_imagen("Incorrect.png")
 imagen_tick_on = cargar_imagen("Tick_on.png")
 imagen_tick_off = cargar_imagen("Tick_off.png")
+imagen_imu_correcto = cargar_imagen("Correct2.png") #AGREGAR
+imagen_imu_incorrecto = cargar_imagen("Incorrect2.png") #AGREGAR
+imagen_imu_idle = cargar_imagen("Idle.png") #AGREAR
 
 def pegar_imagen_en_array(m_array, imagen_np, x, y):
     h, w = imagen_np.shape[:2]
@@ -125,11 +128,12 @@ def ai_output_tensor_draw(request: CompletedRequest, boxes, scores, keypoints, s
     with MappedArray(request, stream) as m:
         # Cuadro 1 – IMU (arriba izquierda)
         if "posicion correcta" in estado_imu.lower():
-            m.array[10:60, 10:60] = (0, 255, 0, 255)  # Verde
-        elif "posicion incorrecta (horizontal)" in estado_imu.lower():
-            m.array[10:60, 10:60] = (255, 0, 0, 255)  # Rojo
+            pegar_imagen_en_array(m.array, imagen_imu_correcto, x=10, y=10)
+        elif "posicion incorrecta" in estado_imu.lower():
+            pegar_imagen_en_array(m.array, imagen_imu_incorrecto, x=10, y=10)
         else:
-            m.array[10:60, 10:60] = (255, 255, 255, 255)  # Blanco si no hay info aún
+            pegar_imagen_en_array(m.array, imagen_imu_idle, x=10, y=10)
+
         if boxes is not None and len(boxes) > 0:
             drawer.annotate_image(m.array, boxes, scores,
                                   np.zeros(scores.shape), keypoints, args.detection_threshold,
