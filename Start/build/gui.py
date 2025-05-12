@@ -1,3 +1,4 @@
+#! /usr/bin/python3
 from pathlib import Path
 from tkinter import Tk, Canvas, PhotoImage
 import subprocess

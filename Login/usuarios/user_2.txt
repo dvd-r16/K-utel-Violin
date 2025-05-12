@@ -4,7 +4,7 @@ Edad: 22
 Género: Masculino
 Nivel: 2
 [Progreso]
-Lección 1: 4,4,4,4,0,4
-Lección 2: 4,4,4,4,0,4
-Lección 3: 0,0,0,0,0,0
+Lección 1: 4,3,4,0,0,2
+Lección 2: 6,6,6,6,0,6
+Lección 3: 0,2,2,2,0,0
 Lección 4: 0,0,0,0,0,0

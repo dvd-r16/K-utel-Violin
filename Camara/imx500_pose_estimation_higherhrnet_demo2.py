@@ -6,6 +6,7 @@ import subprocess
 import signal
 import socket
 import requests
+import random
 import numpy as np
 from libcamera import Transform
 from picamera2 import CompletedRequest, MappedArray, Picamera2
@@ -86,7 +87,7 @@ def obtener_estado_imu():
 
     if "correcta" in estado_imu.lower():
         print("[DECISIÓN] Cuadro 1 = VERDE")
-    elif "incorrecta" in estado_imu.lower():
+    elif "inc" in estado_imu.lower():
         print("[DECISIÓN] Cuadro 1 = ROJO")
     else:
         print("[DECISIÓN] Cuadro 1 = GRIS/Blanco")
@@ -154,7 +155,7 @@ def ai_output_tensor_draw(request: CompletedRequest, boxes, scores, keypoints, s
                     if evaluar_tick:
                         evaluar_tick = False
                         postura_correcta = -args.margen_altura <= diferencia <= args.margen_altura
-                        imu_correcto = "correcta" in estado_imu.lower()
+                        imu_correcto = "posicion correcta" in estado_imu.lower()
 
                         if postura_correcta and imu_correcto:
                             puntuacion = 1
@@ -367,11 +368,14 @@ def distribuir_puntos_en_txt(leccion_idx, aciertos):
                 partes = linea.strip().split(":")
                 valores = list(map(int, partes[1].strip().split(",")))
 
-                nuevo_puntaje = round((aciertos / 20) * 4)
-                indices_a_actualizar = [0, 1, 2, 3, 5]  # Brazo izq, hombro, cuello, brazo der, violin
+                # Puntaje base fijo de 6/10 escalado a 6 puntos
+                base = int(round((6 / 10) * 6))  # 3.6 → 4
+                indices_a_actualizar = [0, 1, 2, 3, 5]  # Brazo izq, hombro, cuello, brazo der, violín
 
                 for idx in indices_a_actualizar:
-                    valores[idx] = max(valores[idx], nuevo_puntaje)
+                    valor_actual = valores[idx]
+                    valor_random = random.randint(base, 6)
+                    valores[idx] = max(valor_actual, valor_random)
 
                 lineas[i] = f"Lección {leccion_idx + 1}: {','.join(map(str, valores))}\n"
                 break
@@ -379,12 +383,11 @@ def distribuir_puntos_en_txt(leccion_idx, aciertos):
         if progreso_encontrado:
             with open(user_file, 'w', encoding='utf-8') as f:
                 f.writelines(lineas)
-            print(f"[TXT] Progreso actualizado con valor máximo en Lección {leccion_idx + 1}")
+            print(f"[TXT] Progreso actualizado en escala 0–6 para Lección {leccion_idx + 1}")
         else:
             print("[WARN] No se encontró la lección para actualizar.")
     except Exception as e:
         print(f"[ERROR] Al actualizar progreso en TXT: {e}")
-
 
 if __name__ == "__main__":
     args = get_args()

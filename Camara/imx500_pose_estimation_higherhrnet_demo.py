@@ -7,6 +7,7 @@ import signal
 import socket
 import requests
 import numpy as np
+import random
 from libcamera import Transform
 from picamera2 import CompletedRequest, MappedArray, Picamera2
 from picamera2.devices.imx500 import IMX500, NetworkIntrinsics
@@ -157,7 +158,7 @@ def ai_output_tensor_draw(request: CompletedRequest, boxes, scores, keypoints, s
                     if evaluar_tick:
                         evaluar_tick = False
                         postura_correcta = -args.margen_altura <= diferencia <= args.margen_altura
-                        imu_correcto = "correcta" in estado_imu.lower()
+                        imu_correcto = "posicion correcta" in estado_imu.lower()
 
                         if postura_correcta and imu_correcto:
                             puntuacion = 1
@@ -393,11 +394,13 @@ def distribuir_puntos_en_txt(leccion_idx, aciertos):
                 partes = linea.strip().split(":")
                 valores = list(map(int, partes[1].strip().split(",")))
 
-                nuevo_puntaje = round((sum(resultados) / 10) * 4)
-                indices_a_actualizar = [0, 1, 2, 3, 5]  # Brazo izq, hombro, cuello, brazo der, violin
+                nuevo_puntaje_base = round((sum(resultados) / 10) * 4)
+                indices_a_actualizar = [0, 1, 2, 5]  # Brazo izq, hombro, cuello, violin
 
                 for idx in indices_a_actualizar:
-                    valores[idx] = max(valores[idx], nuevo_puntaje)
+                    valor_actual = valores[idx]
+                    valor_random = random.randint(nuevo_puntaje_base, 4)
+                    valores[idx] = max(valor_actual, valor_random)  # Solo sube si el nuevo es mayor
 
                 lineas[i] = f"Lección {leccion_idx+1}: {','.join(map(str, valores))}\n"
                 break
@@ -405,12 +408,11 @@ def distribuir_puntos_en_txt(leccion_idx, aciertos):
         if progreso_encontrado:
             with open(user_file, 'w', encoding='utf-8') as f:
                 f.writelines(lineas)
-            print(f"[TXT] Progreso actualizado con valor máximo en Lección {leccion_idx}")
+            print(f"[TXT] Progreso actualizado con aleatoriedad y condición de no descenso en Lección {leccion_idx}")
         else:
             print("[WARN] No se encontró la lección para actualizar.")
     except Exception as e:
         print(f"[ERROR] Al actualizar progreso en TXT: {e}")
-
 
 if __name__ == "__main__":
     args = get_args()

@@ -155,7 +155,7 @@ def ai_output_tensor_draw(request: CompletedRequest, boxes, scores, keypoints, s
                     if evaluar_tick:
                         evaluar_tick = False
                         postura_correcta = -args.margen_altura <= diferencia <= args.margen_altura
-                        imu_correcto = "correcta" in estado_imu.lower()
+                        imu_correcto = "posicion correcta" in estado_imu.lower()
 
                         if postura_correcta and imu_correcto:
                             puntuacion = 1
@@ -372,13 +372,14 @@ def distribuir_puntos_en_txt(leccion_idx, aciertos):
                 partes = linea.strip().split(":")
                 valores = list(map(int, partes[1].strip().split(",")))
 
-                # Convertimos aciertos (0 a 20) a radar (0 a 6)
-                nuevo_valor = round((aciertos / 20) * 6)
+                # Convertimos aciertos (0 a 20) a radar (0 a 8)
+                nuevo_valor = round((aciertos / 20) * 8)
 
-                # Actualizamos sin disminuir valores previos
+                # Actualizamos cada campo con un valor aleatorio entre el actual y el nuevo, solo si mejora
                 for idx in range(len(valores)):
-                    valores[idx] = max(valores[idx], random.randint(valores[idx], nuevo_valor))
-
+                    if nuevo_valor > valores[idx]:
+                        valor_random = random.randint(valores[idx], nuevo_valor)
+                        valores[idx] = valor_random
                 # Sobrescribimos la línea
                 lineas[i] = f"Lección {leccion_idx + 1}: {','.join(map(str, valores))}\n"
                 break

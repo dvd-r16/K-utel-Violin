@@ -108,7 +108,7 @@ def generar_graficas_resultado():
     if len(progreso) >= 1:
         datos = progreso[0]  # Lección 1
 
-        max_per_area = 2
+        max_per_area = 4
 
         datos_limitados = [min(val, max_per_area) for val in datos]
         datos_radar = datos_limitados + [datos_limitados[0]]  # para cerrar
@@ -116,7 +116,7 @@ def generar_graficas_resultado():
         ax.plot(angles, datos_radar, linewidth=2.5, color='#5ce1e6')
         ax.fill(angles, datos_radar, alpha=0.1, color='#5ce1e6')
 
-        escala_max = 2  # fijo según tus reglas
+        escala_max = 4  # fijo según tus reglas
         ax.set_ylim(0, escala_max)
         ax.set_yticks([1, 2])
         ax.set_yticklabels(["1", "2"], color='white', size=8)
