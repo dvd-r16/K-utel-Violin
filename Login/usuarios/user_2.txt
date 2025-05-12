@@ -2,7 +2,7 @@ Nombre: David
 Apellido: Rodas
 Edad: 22
 Género: Masculino
-Nivel: 1
+Nivel: 2
 [Progreso]
 Lección 1: 4,4,4,4,0,4
 Lección 2: 4,4,4,4,0,4

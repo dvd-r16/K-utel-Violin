@@ -164,7 +164,7 @@ canvas.create_image(1021.36, 123.83, image=image_nivel)
 canvas.create_text(226.0, 340.0, anchor="nw", text=nombre, fill="#FFFFFF", font=("LondrinaSolid Black", -43))
 canvas.create_text(226.0, 502.0, anchor="nw", text=apellido, fill="#FFFFFF", font=("LondrinaSolid Black", -43))
 canvas.create_text(250.0, 653.0, anchor="nw", text=edad, fill="#FFFFFF", font=("LondrinaSolid Black", -43))
-canvas.create_text(561.0, 653.0, anchor="nw", text=genero, fill="#FFFFFF", font=("LondrinaSolid Black", -43))
+canvas.create_text(521.0, 653.0, anchor="nw", text=genero, fill="#FFFFFF", font=("LondrinaSolid Black", -43))
 
 # Botón de imagen del usuario
 try:

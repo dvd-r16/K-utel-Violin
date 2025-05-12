@@ -31,7 +31,7 @@ def detener_metronomo():
 # Ruta base
 BASE_PATH = Path(__file__).resolve().parent.parent.parent
 CAMARA_SCRIPT_PATH = BASE_PATH / "Camara" / "imx500_pose_estimation_higherhrnet_demo.py"
-VIDEO_PATH = BASE_PATH / "Video" / "build" / "assets" / "frame0" / "video1.mp4"
+VIDEO_PATH = BASE_PATH / "Video" / "build" / "assets" / "frame0" / "Video01.mp4"
 RESULT_GUI_PATH = BASE_PATH / "Results" / "build" / "Result.py"
 
 def reproducir_video():
