@@ -153,19 +153,33 @@ def ai_output_tensor_draw(request: CompletedRequest, boxes, scores, keypoints, s
                     diferencia = altura_hombro - altura_muneca  # positivo si muñeca está más arriba
                     if evaluar_tick:
                         evaluar_tick = False
-                        bueno = -args.margen_altura <= diferencia <= args.margen_altura
-                        color_resultado = (0, 255, 0, 255) if bueno else (255, 0, 0, 255)
+                        postura_correcta = -args.margen_altura <= diferencia <= args.margen_altura
+                        imu_correcto = "correcta" in estado_imu.lower()
+
+                        if postura_correcta and imu_correcto:
+                            puntuacion = 1
+                        elif postura_correcta or imu_correcto:
+                            puntuacion = 0.5
+                        else:
+                            puntuacion = 0
+
+                        color_resultado = (0, 255, 0, 255) if puntuacion >= 0.5 else (255, 0, 0, 255)
                         mostrar_color_resultado = True
-                        resultados.append(bueno)
+                        resultados.append(puntuacion)
                         evaluaciones_realizadas += 1
 
-                        if bueno:
+                        if puntuacion == 1:
                             sound_correct.play()
                         else:
                             sound_incorrect.play()
 
-                        print(f"[EVAL] {'✔️ BUENO' if bueno else '❌ MALO'} | Evaluación #{evaluaciones_realizadas}/20")
-
+                        if puntuacion == 1:
+                            estado_eval = "✔️ EXCELENTE"
+                        elif puntuacion == 0.5:
+                            estado_eval = "➖ ACEPTABLE"
+                        else:
+                            estado_eval = "❌ INCORRECTO"
+                        print(f"[EVAL] {estado_eval} | Evaluación #{evaluaciones_realizadas}/20")
                         if evaluaciones_realizadas >= 20:
                             registrar_resultado(leccion_idx=1, aciertos=resultados.count(True))  # Lección 2
                             distribuir_puntos_en_txt(leccion_idx=1, aciertos=resultados.count(True))

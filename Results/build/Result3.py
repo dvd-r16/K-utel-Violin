@@ -105,8 +105,8 @@ def generar_graficas_resultado():
     ax.set_theta_direction(-1)
 
     ax.set_thetagrids(np.degrees(angles[:-1]), etiquetas, color='white')
-    if len(progreso) >= 2:
-        datos = progreso[1] + [progreso[1][0]]  # Duplica solo una vez para cierre correcto
+    if len(progreso) >= 3:
+        datos = progreso[2] + [progreso[2][0]]  # Duplica solo una vez para cierre correcto
         max_val = max(progreso[1])
 
 
@@ -147,7 +147,7 @@ def generar_graficas_resultado():
         df = pd.read_csv(csv_path)
 
         df['leccion'] = df['leccion'].str.extract(r'(\d+)').astype(float)
-        df_leccion = df[df['leccion'] == 2].sort_values(by='intento', ascending=False).head(10).sort_values(by='intento')
+        df_leccion = df[df['leccion'] == 3].sort_values(by='intento', ascending=False).head(10).sort_values(by='intento')
 
         valores = df_leccion['valor'].tolist()
         fig2, ax2 = plt.subplots(figsize=(4.8, 2.5))
@@ -210,10 +210,10 @@ def cargar_estrellas_con_opacidad():
         csv_file = USERS_PATH / f"user_{user_id}.csv"
 
         df = pd.read_csv(csv_file)
-        df_leccion2 = df[df['leccion'].str.contains("Lección 2", na=False)]
+        df_leccion2 = df[df['leccion'].str.contains("Lección 3", na=False)]
 
         if df_leccion2.empty:
-            print("[INFO] No hay registros en Lección 2")
+            print("[INFO] No hay registros en Lección 3")
             return 0
 
         valor = df_leccion2.sort_values(by="intento", ascending=False).iloc[0]["valor"]

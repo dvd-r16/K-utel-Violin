@@ -69,6 +69,8 @@ imagen_correcto = cargar_imagen("Correct.png")
 imagen_incorrecto = cargar_imagen("Incorrect.png")
 imagen_tick_on = cargar_imagen("Tick_on.png")
 imagen_tick_off = cargar_imagen("Tick_off.png")
+imagen_timer = cargar_imagen("Timer.png")
+imagen_timer2 = cargar_imagen("Timer2.png")
 
 def pegar_imagen_en_array(m_array, imagen_np, x, y):
     h, w = imagen_np.shape[:2]
@@ -117,6 +119,7 @@ def borrar_color_resultado():
     temporizador_activo = False
     if last_m_array is not None:
         last_m_array[10:60, 70:120] = (255, 255, 255, 255)  # Limpiar resultado (cuadro 2)
+
 
 
 def ai_output_tensor_draw(request: CompletedRequest, boxes, scores, keypoints, stream='main'):
@@ -202,10 +205,8 @@ def ai_output_tensor_draw(request: CompletedRequest, boxes, scores, keypoints, s
                         if not temporizador_activo:
                             temporizador_activo = True
                             threading.Timer(1.5, borrar_color_resultado).start()
-                    else:
-                        imagen_a_usar = imagen_idle
+                        pegar_imagen_en_array(m.array, imagen_a_usar, x=70, y=10)
 
-                    pegar_imagen_en_array(m.array, imagen_a_usar, x=70, y=10)
 
 
 
@@ -213,6 +214,11 @@ def ai_output_tensor_draw(request: CompletedRequest, boxes, scores, keypoints, s
                     # Cuadro 3 – indicador visual de tick azul (parte inferior derecha)
                     imagen_tick = imagen_tick_on if mostrar_tick_azul else imagen_tick_off
                     pegar_imagen_en_array(m.array, imagen_tick, x=70, y=70)
+
+                    # Cuadro 4 – Temporizador exploración (arriba derecha)
+                    if fase_exploracion:
+                        imagen_timer_actual = imagen_timer if tick_total < 30 else imagen_timer2
+                        pegar_imagen_en_array(m.array, imagen_timer_actual, x=580, y=10)
        
 
 def activar_cuadro_tick():

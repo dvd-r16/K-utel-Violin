@@ -4,6 +4,7 @@ import os
 import time
 import subprocess
 import signal
+import random
 import socket
 import requests
 import numpy as np
@@ -153,22 +154,37 @@ def ai_output_tensor_draw(request: CompletedRequest, boxes, scores, keypoints, s
                     diferencia = altura_hombro - altura_muneca  # positivo si muñeca está más arriba
                     if evaluar_tick:
                         evaluar_tick = False
-                        bueno = -args.margen_altura <= diferencia <= args.margen_altura
-                        color_resultado = (0, 255, 0, 255) if bueno else (255, 0, 0, 255)
+                        postura_correcta = -args.margen_altura <= diferencia <= args.margen_altura
+                        imu_correcto = "correcta" in estado_imu.lower()
+
+                        if postura_correcta and imu_correcto:
+                            puntuacion = 1
+                        elif postura_correcta or imu_correcto:
+                            puntuacion = 0.5
+                        else:
+                            puntuacion = 0
+
+                        color_resultado = (0, 255, 0, 255) if puntuacion >= 0.5 else (255, 0, 0, 255)
                         mostrar_color_resultado = True
-                        resultados.append(bueno)
+                        resultados.append(puntuacion)
                         evaluaciones_realizadas += 1
 
-                        if bueno:
+                        if puntuacion == 1:
                             sound_correct.play()
                         else:
                             sound_incorrect.play()
 
-                        print(f"[EVAL] {'✔️ BUENO' if bueno else '❌ MALO'} | Evaluación #{evaluaciones_realizadas}/20")
-
+                        if puntuacion == 1:
+                            estado_eval = "✔️ EXCELENTE"
+                        elif puntuacion == 0.5:
+                            estado_eval = "➖ ACEPTABLE"
+                        else:
+                            estado_eval = "❌ INCORRECTO"
+                        print(f"[EVAL] {estado_eval} | Evaluación #{evaluaciones_realizadas}/20")
                         if evaluaciones_realizadas >= 20:
-                            registrar_resultado(leccion_idx=2, aciertos=resultados.count(True))  # Lección 2
-                            distribuir_puntos_en_txt(leccion_idx=2, aciertos=resultados.count(True))
+                            aciertos = sum(1 for x in resultados if x == 1)  # Solo se cuentan aciertos perfectos
+                            registrar_resultado(leccion_idx=2, aciertos=aciertos)  # Lección 3
+                            distribuir_puntos_en_txt(leccion_idx=2, aciertos=aciertos)
                             print("[FIN] Se completaron 20 evaluaciones. Esperando instrucciones del proceso padre...")
                             global cerrar_programa
                             cerrar_programa = True
@@ -324,9 +340,12 @@ def registrar_resultado(leccion_idx, aciertos):
         if csv_file.exists():
             with open(csv_file, 'r') as f:
                 reader = list(csv.DictReader(f))
-                if reader:
-                    ultimos = [int(r["intento"]) for r in reader if r["leccion"] == f"Lección {leccion_idx + 1}"]
-                    intento = max(ultimos) + 1
+                ultimos = [int(r["intento"]) for r in reader if r["leccion"] == f"Lección {leccion_idx + 1}"]
+            if ultimos:
+                intento = max(ultimos) + 1
+            else:
+                intento = 1
+
 
         with open(csv_file, 'a', newline='') as f:
             writer = csv.writer(f)
@@ -353,19 +372,33 @@ def distribuir_puntos_en_txt(leccion_idx, aciertos):
                 partes = linea.strip().split(":")
                 valores = list(map(int, partes[1].strip().split(",")))
 
-                nuevo_puntaje = round((aciertos / 20) * 4)
-                indices_a_actualizar = [0, 1, 2, 3, 5]  # Brazo izq, hombro, cuello, brazo der, violin
+                # Convertimos aciertos (0 a 20) a radar (0 a 6)
+                nuevo_valor = round((aciertos / 20) * 6)
 
-                for idx in indices_a_actualizar:
-                    valores[idx] = max(valores[idx], nuevo_puntaje)
+                # Actualizamos sin disminuir valores previos
+                for idx in range(len(valores)):
+                    valores[idx] = max(valores[idx], random.randint(valores[idx], nuevo_valor))
 
+                # Sobrescribimos la línea
                 lineas[i] = f"Lección {leccion_idx + 1}: {','.join(map(str, valores))}\n"
+                break
+
+        # Actualizamos el nivel si corresponde
+        for i, linea in enumerate(lineas):
+            if linea.startswith("Nivel:"):
+                nivel_actual = int(linea.strip().split(":")[1])
+                if nivel_actual == 2 and (aciertos / 20) >= 0.7:
+                    nuevo_nivel = 3
+                    lineas[i] = f"Nivel: {nuevo_nivel}\n"
+                    print(f"[NIVEL] El usuario ha subido al nivel {nuevo_nivel}")
+                else:
+                    print(f"[NIVEL] No se modificó el nivel. Actual: {nivel_actual}")
                 break
 
         if progreso_encontrado:
             with open(user_file, 'w', encoding='utf-8') as f:
                 f.writelines(lineas)
-            print(f"[TXT] Progreso actualizado con valor máximo en Lección {leccion_idx + 1}")
+            print(f"[TXT] Progreso actualizado para Lección {leccion_idx + 1}")
         else:
             print("[WARN] No se encontró la lección para actualizar.")
     except Exception as e:
