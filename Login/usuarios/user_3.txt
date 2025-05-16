@@ -1,0 +1,10 @@
+Nombre: Maria
+Apellido: Ines
+Edad: 26
+Género: Femenino
+Nivel: 1
+[Progreso]
+Lección 1: 4,4,4,0,0,4
+Lección 2: 4,4,6,6,0,5
+Lección 3: 0,0,0,0,0,0
+Lección 4: 0,0,0,0,0,0

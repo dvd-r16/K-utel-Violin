@@ -345,7 +345,11 @@ def registrar_resultado(leccion_idx, aciertos):
                 reader = list(csv.DictReader(f))
                 if reader:
                     ultimos = [int(r["intento"]) for r in reader if r["leccion"] == f"Lección {leccion_idx + 1}"]
-                    intento = max(ultimos) + 1
+                    if ultimos:
+                        intento = max(ultimos) + 1
+                    else:
+                        intento = 1
+
 
         with open(csv_file, 'a', newline='') as f:
             writer = csv.writer(f)

@@ -1,0 +1,8 @@
+rpicam-hello -t 0s --post-process-file /usr/share/rpi-camera-assets/imx500_mobilenet_ssd.json --viewfinder-width 1920 --viewfinder-height 1000 --framerate 30
+
+
+
+/usr/share/rpi-camera-assets
+
+Post process archivo localizado
+/usr/lib/python3/dist-packages/picamera2/devices/imx500/postprocess.py
