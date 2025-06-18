@@ -1,118 +1,162 @@
 from pathlib import Path
-from tkinter import Tk, Canvas
-from moviepy import VideoFileClip
-import threading
+import tkinter as tk
+from tkinter import Canvas
 import subprocess
+import threading
+import vlc
+import sys
+import os
 
-# Variables globales
-proceso_camara = None
-metronomo_proceso = None
 
-
-def iniciar_metronomo():
-    global metronomo_proceso
-    metronomo_path = BASE_PATH / "Metronomo" / "Metronomo.py"
-    try:
-        metronomo_proceso = subprocess.Popen(["python3", str(metronomo_path)])
-        print("[INFO] Metronomo iniciado.")
-    except Exception as e:
-        print(f"[ERROR] No se pudo iniciar el metronomo: {e}")
-
-def detener_metronomo():
-    global metronomo_proceso
-    if metronomo_proceso is not None:
-        try:
-            metronomo_proceso.terminate()
-            metronomo_proceso.wait(timeout=5)
-            print("[INFO] Metronomo detenido correctamente.")
-        except Exception as e:
-            print(f"[ERROR] No se pudo detener el metronomo: {e}")
-
-# Ruta base
+# Rutas base
 BASE_PATH = Path(__file__).resolve().parent.parent.parent
 CAMARA_SCRIPT_PATH = BASE_PATH / "Camara" / "imx500_pose_estimation_higherhrnet_demo.py"
 VIDEO_PATH = BASE_PATH / "Video" / "build" / "assets" / "frame0" / "Video01.mp4"
 RESULT_GUI_PATH = BASE_PATH / "Results" / "build" / "Result.py"
+METRONOMO_PATH = BASE_PATH / "Metronomo" / "Metronomo.py"
+FLAG_PATH = BASE_PATH / "evaluaciones_completadas.flag"
 
-def reproducir_video():
-    video = VideoFileClip(str(VIDEO_PATH))  # Convertir ruta a string por seguridad
+# Variables globales
+proceso_camara = None
+metronomo_proceso = None
+gui_lanzado = False
+video_omitido = False
+vlc_player = None
+instance = None
 
-    def cuando_termina(el_clip):
-        global proceso_camara
-        print("[INFO] Video terminado. Abriendo detección de pose...")
+def iniciar_metronomo():
+    global metronomo_proceso
+    try:
+        metronomo_proceso = subprocess.Popen(["python3", str(METRONOMO_PATH)])
+        print("[INFO] Metrónomo iniciado.")
+    except Exception as e:
+        print(f"[ERROR] No se pudo iniciar el metrónomo: {e}")
 
-        # Lanzar script de cámara
-        proceso_camara = subprocess.Popen(["python3", str(CAMARA_SCRIPT_PATH)])
-        window.after(1000, verificar_finalizacion)
-        
-        def esperar_cierre():
-            proceso_camara.wait()  # ⏳ Esperar que el script termine
-            print("[INFO] Script de cámara finalizó.")
-            cerrar_todo()  # 🔚 Aquí cerramos el metronomo y lanzamos gui.py
-
-        # Correr en un hilo para no congelar el GUI
-        threading.Thread(target=esperar_cierre, daemon=True).start()
-
-        
-    video.preview()
-    cuando_termina(video)
-
-    # Arrancar metrónomo unos segundos después
-    window.after(5000, iniciar_metronomo)
-
-gui_lanzado = False  # Al inicio del script
+def detener_metronomo():
+    global metronomo_proceso
+    if metronomo_proceso:
+        try:
+            metronomo_proceso.terminate()
+            metronomo_proceso.wait(timeout=5)
+            print("[INFO] Metrónomo detenido.")
+        except Exception as e:
+            print(f"[ERROR] No se pudo detener el metrónomo: {e}")
 
 def cerrar_todo():
-    global proceso_camara, gui_lanzado
-    print("[INFO] Cerrando ventana principal...")
+    global proceso_camara, gui_lanzado, vlc_player
+
+    print("[INFO] Cerrando todo...")
+
+    # Detener metrónomo
     detener_metronomo()
 
-    if proceso_camara is not None and proceso_camara.poll() is None:
+    # Detener cámara
+    if proceso_camara and proceso_camara.poll() is None:
         try:
             proceso_camara.terminate()
             proceso_camara.wait(timeout=5)
+            print("[INFO] Cámara detenida.")
         except Exception as e:
             print(f"[ERROR] No se pudo detener la cámara: {e}")
-    
+
+    # Detener y liberar VLC
+    if vlc_player:
+        try:
+            if vlc_player.is_playing():
+                vlc_player.stop()
+            vlc_player.release()
+            print("[INFO] VLC detenido y liberado.")
+        except Exception as e:
+            print(f"[ERROR] No se pudo cerrar VLC: {e}")
+
+    # Abrir resultados
     if not gui_lanzado:
         gui_lanzado = True
-        print("[INFO] Abriendo interfaz de resultados...")
-        try:
-            subprocess.Popen(["python3", str(RESULT_GUI_PATH)])
-        except Exception as e:
-            print(f"[ERROR] No se pudo abrir gui.py: {e}")
+        print("[INFO] Abriendo GUI de resultados...")
+        subprocess.Popen(["python3", str(RESULT_GUI_PATH)])
 
-    window.destroy()
-    window.quit()
-    flag_path = BASE_PATH / "evaluaciones_completadas.flag"
-    if flag_path.exists():
-        flag_path.unlink()
+    # Forzar cierre total
+    try:
+        root.quit()
+        root.destroy()
+        print("[INFO] Tkinter cerrado correctamente.")
+    except Exception as e:
+        print(f"[ERROR] Al cerrar Tkinter: {e}")
+    
 
+    os._exit(0)  # 💥 Fuerza la terminación de todo el proceso, útil si algo queda colgado
 
-# Crear ventana principal (fullscreen)
-window = Tk()
-window.attributes("-fullscreen", True)
-window.geometry("1440x900")
-window.configure(bg="#32457D")  # Fondo azul
-
-canvas = Canvas(window, bg="#32457D", height=900, width=1440, bd=0, highlightthickness=0, relief="ridge")
-canvas.pack(fill="both", expand=True)
-
-window.bind("<KeyPress-q>", lambda e: cerrar_todo())
 
 def verificar_finalizacion():
-    flag_path = BASE_PATH / "evaluaciones_completadas.flag"
-    if flag_path.exists():
-        print("[INFO] Evaluaciones completadas detectadas por el padre.")
+    if FLAG_PATH.exists():
+        print("[INFO] Evaluaciones completadas detectadas.")
         cerrar_todo()
     else:
-        window.after(1000, verificar_finalizacion)  # Revisa de nuevo en 1 segundo
+        root.after(1000, verificar_finalizacion)
 
-# Vincular la acción de cerrar la ventana
-window.protocol("WM_DELETE_WINDOW", cerrar_todo)
+def lanzar_camara_y_gui():
+    global proceso_camara
+    proceso_camara = subprocess.Popen(["python3", str(CAMARA_SCRIPT_PATH)])
+    iniciar_metronomo()
+    verificar_finalizacion()
 
-# Iniciar el video después de 3 segundos
-window.after(3000, reproducir_video)
+def omitir_intro(event=None):
+    global video_omitido, vlc_player
+    if video_omitido:
+        return
+    video_omitido = True
+    print("[EVENTO] Intro omitida.")
+    if vlc_player:
+        vlc_player.stop()
+        vlc_player.release()
+        print("[INFO] VLC detenido y recursos liberados.")
+    canvas.delete("all")  # Limpia la pantalla
+    canvas.create_text(720, 450, text="⏩ Saltando intro...", fill="white", font=("Arial", 36, "bold"))
+    root.after(1000, lanzar_camara_y_gui)
 
-window.resizable(False, False)
-window.mainloop()
+def reproducir_video():
+    global vlc_player, instance
+    instance = vlc.Instance()
+    media = instance.media_new(str(VIDEO_PATH))
+    vlc_player = instance.media_player_new()
+    vlc_player.set_media(media)
+    vlc_player.set_xwindow(canvas.winfo_id())  # ✅ para Linux (X11)
+    vlc_player.play()
+
+    def esperar_final():
+        while not vlc_player.is_playing():
+            pass
+        while vlc_player.is_playing():
+            if video_omitido:
+                return
+        if not video_omitido:
+            if vlc_player:
+                vlc_player.stop()
+                vlc_player.release()
+                print("[INFO] VLC detenido al finalizar video.")
+            canvas.delete("all")
+            lanzar_camara_y_gui()
+
+    threading.Thread(target=esperar_final, daemon=True).start()
+
+# Crear ventana Tkinter fullscreen
+root = tk.Tk()
+root.attributes("-fullscreen", True)
+root.configure(bg="#32457D")
+canvas = Canvas(root, bg="#32457D", height=900, width=1440, bd=0, highlightthickness=0)
+canvas.pack(fill="both", expand=True)
+
+# Eventos
+root.bind("<space>", omitir_intro)
+root.bind("<Return>", omitir_intro)
+root.bind("<Button-1>", omitir_intro)
+root.bind("<KeyPress-q>", lambda e: cerrar_todo())
+root.protocol("WM_DELETE_WINDOW", cerrar_todo)
+
+# Eliminar flag si quedó de ejecuciones pasadas
+if FLAG_PATH.exists():
+    FLAG_PATH.unlink()
+
+# Iniciar reproducción después de 1 segundo (para que la GUI se prepare)
+root.after(1000, reproducir_video)
+root.mainloop()

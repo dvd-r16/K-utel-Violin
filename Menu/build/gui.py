@@ -2,6 +2,16 @@ from pathlib import Path
 from tkinter import Tk, Canvas, Button, PhotoImage
 import subprocess
 import pygame
+import os
+import sys
+
+VENV_PYTHON = "/home/dvdr/Documentos/K-utel-Violin/Kutelenv/bin/python"
+
+if sys.executable != VENV_PYTHON and "__skip_venv__" not in sys.argv:
+    os.execv(VENV_PYTHON, [VENV_PYTHON, *sys.argv, "__skip_venv__"])
+
+
+
 
 pygame.mixer.init()
 
@@ -76,24 +86,37 @@ button_active_3 = PhotoImage(file=relative_to_assets("button_3.1.png"))
 
 active_button = None
 
+def lanzar_y_cerrar(script_path):
+    try:
+        proc = subprocess.Popen([VENV_PYTHON, str(script_path)])
+        window.after(300, lambda: verificar_y_cerrar(proc))
+    except Exception:
+        pass  # silencioso y sin print
+
+
+def verificar_y_cerrar(proc):
+    try:
+        if proc.poll() is None:
+            window.destroy()
+    except:
+        pass
+
 def open_login_gui():
-    subprocess.Popen(["python", str(LOGIN_GUI_PATH)])
-    window.after(1000, window.destroy)  # Cierra esta ventana 1 segundo después
+    lanzar_y_cerrar(LOGIN_GUI_PATH)
 
 def open_estadisticas_gui():
-    subprocess.Popen(["python", str(ESTADISTICAS_GUI_PATH)])
-    window.after(4000, window.destroy)
+    lanzar_y_cerrar(ESTADISTICAS_GUI_PATH)
+
+
 
 def abrir_video_si_registrado(video_path, boton, imagen_registrado):
     if boton.cget('image') == str(imagen_registrado):  # Solo si tiene imagen registrado
-        subprocess.Popen(["python", str(video_path)])
-        window.after(1000, window.destroy)
+        lanzar_y_cerrar(video_path)
     else:
         print("[INFO] El usuario aún no ha registrado sus datos, no se puede abrir el video.")
 
 def open_video1():
-    subprocess.Popen(["python", str(VIDEO1_PATH)])
-    window.after(1000, window.destroy)  # 1 segundo después cerrar
+    lanzar_y_cerrar(VIDEO1_PATH)
 
 def activate_button(button):
     global active_button
@@ -117,7 +140,7 @@ def activate_button(button):
         open_estadisticas_gui()
     elif button == 3:
         button_3.config(image=button_active_3)
-        subprocess.Popen(["python", str(PERFIL_GUI_PATH)])
+        subprocess.Popen([VENV_PYTHON, str(PERFIL_GUI_PATH)])
         window.after(1000, window.destroy)
     active_button = button
 
@@ -366,5 +389,4 @@ try:
 except Exception as e:
     print(f"[ERROR] Al leer la información del usuario: {e}")
 
-window.resizable(False, False)
 window.mainloop()

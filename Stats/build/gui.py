@@ -6,6 +6,23 @@ import numpy as np
 from PIL import Image
 import pandas as pd
 import pygame
+import os
+import sys
+
+VENV_PYTHON = "/home/dvdr/Documentos/K-utel-Violin/Kutelenv/bin/python"
+
+if sys.executable != VENV_PYTHON and "__skip_venv__" not in sys.argv:
+    os.execv(VENV_PYTHON, [VENV_PYTHON] + ["__skip_venv__"] + sys.argv)
+
+
+
+with open("/home/dvdr/gui_log.txt", "w") as f:
+    f.write(f"Python usado: {sys.executable}\n")
+    f.write(f"DISPLAY = {os.environ.get('DISPLAY')}\n")
+    f.write(f"XDG_SESSION_ID = {os.environ.get('XDG_SESSION_ID')}\n")
+    f.write(f"DBUS_SESSION_BUS_ADDRESS = {os.environ.get('DBUS_SESSION_BUS_ADDRESS')}\n")
+
+
 
 OUTPUT_PATH = Path(__file__).parent
 ASSETS_PATH = OUTPUT_PATH / "assets" / "frame0"
@@ -22,6 +39,14 @@ LINE_CHARTS_PATHS = [ASSETS_PATH / "image_5.png", ASSETS_PATH / "image_6.png", A
 
 def relative_to_assets(path: str) -> Path:
     return ASSETS_PATH / Path(path)
+
+
+def verificar_y_cerrar(proc):
+    try:
+        if proc.poll() is None:
+            window.destroy()
+    except:
+        pass
 
 music_path = str(ASSETS_PATH / "musica_fondo.wav")
 pygame.mixer.init()
@@ -181,9 +206,23 @@ button_active_3 = PhotoImage(file=relative_to_assets("button_3.1.png"))
 active_button = 2
 
 def open_and_close(path):
-    subprocess.Popen(["python", str(path)])
-    pygame.mixer.music.stop()
-    window.after(2000, window.destroy)
+    try:
+        with open("/home/dvdr/gui_log.txt", "a") as f:
+            f.write(f"Llamando a: {path}\n")
+
+        subprocess.Popen(
+            [VENV_PYTHON, str(path)],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            start_new_session=True  # <-- Esto es clave
+        )
+
+        pygame.mixer.music.stop()
+        window.after(300, window.destroy)
+    except Exception as e:
+        with open("/home/dvdr/gui_log.txt", "a") as f:
+            f.write(f"[ERROR] Al abrir ventana: {e}\n")
+
 
 def activate_button(button):
     global active_button

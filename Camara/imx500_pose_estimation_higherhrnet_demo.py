@@ -124,7 +124,10 @@ def borrar_color_resultado():
     mostrar_color_resultado = False
     temporizador_activo = False
     if last_m_array is not None:
-        last_m_array[10:60, 70:120] = (255, 255, 255, 255)  # Limpiar resultado (cuadro 2)
+        last_m_array.array[10:60, 70:120] = (255, 255, 255, 255)
+        last_m_array.close()
+        last_m_array = None
+
 
 
 
@@ -146,7 +149,7 @@ def ai_output_tensor_draw(request: CompletedRequest, boxes, scores, keypoints, s
             global last_m_array, evaluar_tick, color_resultado, mostrar_color_resultado
             global evaluaciones_realizadas, resultados
 
-            last_m_array = m.array  # Guardamos referencia al frame actual
+            last_m_array = m  # Guardamos referencia al frame actual
 
             for person in keypoints:
                 shoulder = person[6]
@@ -312,8 +315,10 @@ def detener_componentes():
         print(f"[WARN] Error al detener picam2: {e}")
     try:
         imx500.stop_network_task()
+    except AttributeError:
+        print("[WARN] Error al detener red neuronal: 'IMX500' object has no attribute 'stop_network_task'")
     except Exception as e:
-        print(f"[WARN] Error al detener red neuronal: {e}")
+        print(f"[WARN] Error inesperado al detener red neuronal: {e}")
 
 def socket_tick_listener():
     global tick_count, evaluar_tick, tick_total, cerrar_programa, fase_exploracion
@@ -480,8 +485,33 @@ if __name__ == "__main__":
 
         Thread(target=hilo_estado_imu, daemon=True).start()
 
-        while True:
+        while not cerrar_programa:
             time.sleep(0.5)
+
+        # 🔽 Se llegó al final por evaluación completa
+        print("[INFO] Evaluaciones completadas detectadas. Iniciando cierre limpio...")
+
+        try:
+            picam2.stop()
+            time.sleep(0.3)
+            picam2.close()
+        except Exception as e:
+            print(f"[WARN] Error al detener picam2: {e}")
+
+        try:
+            imx500.stop_network_task()
+        except AttributeError:
+            print("[WARN] Error al detener red neuronal: 'IMX500' object has no attribute 'stop_network_task'")
+        except Exception as e:
+            print(f"[WARN] Error inesperado al detener red neuronal: {e}")
+
+        import gc
+        del picam2
+        gc.collect()
+
+        print("[INFO] Programa finalizado correctamente.")
+        sys.exit(0)
+
 
     except KeyboardInterrupt:
         print("\n[INFO] Interrupción recibida, cerrando...")
