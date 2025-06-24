@@ -1,0 +1,37 @@
+[DEBUG] Lanzando Result.py...
+[INFO] Último puntaje L1: 0.0 → 0%
+[DEBUG] Botón presionado: volver al menú
+[DEBUG] Result.py finalizó.
+pygame 2.1.2 (SDL 2.26.5, Python 3.11.2)
+Hello from the pygame community. https://www.pygame.org/contribute.html
+[INFO] Música de fondo iniciada.
+[INFO] Usuario seleccionado: 2
+[INFO] Información de user_2.txt:
+Nombre: David
+Apellido: Rodas
+Edad: 22
+Género: Masculino
+Nivel: 2
+[Progreso]
+Lección 1: 4,4,4,0,0,4
+Lección 2: 6,6,6,6,0,6
+Lección 3: 0,2,2,2,0,0
+Lección 4: 0,0,0,0,0,0
+[INFO] Activando grupo B (masculino)
+[INFO] Nivel del usuario: 2
+pygame 2.1.2 (SDL 2.26.5, Python 3.11.2)
+Hello from the pygame community. https://www.pygame.org/contribute.html
+[INFO] Música de fondo iniciada.
+[INFO] Usuario seleccionado: 2
+[INFO] Generando gráfica de líneas para el usuario: 2
+[INFO] CSV cargado correctamente:
+     leccion  intento  valor                       fecha
+0  Lección 2        1    9.0  2025-05-11T15:16:10.220018
+1  Lección 1        1    8.0  2025-05-11T15:48:09.918699
+2  Lección 1        2    8.0  2025-05-11T16:08:27.264540
+3  Lección 1        3    8.5  2025-05-11T16:48:41.132406
+4  Lección 1        4    8.0  2025-05-11T16:52:56.757707
+
+[INFO] Lección 1: [4.5, 5.0, 1.0, 1.5, 4.0, 0.0, 5.0, 5.0, 0.0, 0.0]
+[INFO] Lección 2: [9.0, 0.0, 5.0, 0.0, 4.0, 0.0, 5.0, 3.0, 3.0, 0.0]
+[INFO] Lección 3: [2.5, 0.0]

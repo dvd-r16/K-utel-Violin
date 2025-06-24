@@ -49,8 +49,8 @@ except Exception as e:
     print(f"[ERROR] No se pudo reproducir la música: {e}")
 
 window = Tk()
-window.attributes("-fullscreen", True)
-#window.overrideredirect(True)
+#window.attributes("-fullscreen", True)
+window.overrideredirect(True)
 
 def salir_fullscreen(event=None):
     pygame.mixer.music.stop()

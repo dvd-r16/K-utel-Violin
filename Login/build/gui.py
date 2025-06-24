@@ -19,7 +19,13 @@ def relative_to_assets(path: str) -> Path:
     return ASSETS_PATH / Path(path)
 
 def ejecutar_script(path):
-    subprocess.Popen(["python", str(path)])
+    venv_python = BASE_PATH / "Kutelenv" / "bin" / "python"
+    try:
+        subprocess.Popen([str(venv_python), str(path)])
+        print(f"[INFO] Ejecutando con entorno virtual: {path}")
+    except Exception as e:
+        print(f"[ERROR] Al ejecutar {path} con entorno virtual: {e}")
+
 
 def verificar_usuario(usuario_id):
     return (USERS_PATH / f"user_{usuario_id}.txt").exists()
@@ -54,8 +60,8 @@ def manejar_click(usuario_id, boton, imagen_original, imagen_registrado):
         ejecutar_script(REGISTER_PATH)
 
 window = Tk()
-#window.overrideredirect(True)
-window.attributes("-fullscreen", True)
+window.overrideredirect(True)
+#window.attributes("-fullscreen", True)
 window.geometry("1440x900")
 window.configure(bg="#32457D")
 

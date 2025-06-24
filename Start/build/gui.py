@@ -25,8 +25,9 @@ def launch_main_gui():
 
 # Splash
 window = Tk()
-window.attributes("-fullscreen", True)
-window.geometry("1536x864")
+#window.attributes("-fullscreen", True)
+window.overrideredirect(True)
+window.geometry("1440x900")
 window.configure(bg="#FFFFFF")
 
 canvas = Canvas(

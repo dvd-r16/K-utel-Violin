@@ -13,6 +13,7 @@ from PIL import ImageTk, Image
 # Explicit imports to satisfy Flake8
 from tkinter import Tk, Canvas, Entry, Text, Button, PhotoImage
 from tkinter import font as tkfont
+import sys
 
 
 
@@ -246,6 +247,7 @@ def volver_al_menu():
     def cerrar_completo():
         window.destroy()
         window.quit()
+        sys.exit(0)
 
     window.after(1000, cerrar_completo)  # Espera 1 seg para cierre limpio
 

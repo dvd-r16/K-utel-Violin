@@ -3,6 +3,7 @@ from tkinter import Tk, Canvas, Button, PhotoImage
 import subprocess
 from PIL import Image, ImageTk
 import os
+import sys
 
 
 OUTPUT_PATH = Path(__file__).parent
@@ -21,18 +22,29 @@ def relative_to_assets(path: str) -> Path:
     return ASSETS_PATH / Path(path)
 
 def open_login():
-    # Cambiar imagen del botón 1 al presionar
     button_1.config(image=button_image_1_pressed)
-    subprocess.Popen(["python", str(LOGIN_PATH)])
+    subprocess.Popen([sys.executable, str(LOGIN_PATH)])
     window.after(1000, window.destroy)
 
+
 def open_menu():
-    subprocess.Popen(["python", str(MENU_PATH)])
+    button_3.config(image=button_active_3)  # (ya tenía la imagen activa desde el inicio)
+    subprocess.Popen([sys.executable, str(MENU_PATH)])
     window.after(1000, window.destroy)
 
 def open_estadisticas_gui():
-    subprocess.Popen(["python", str(ESTADISTICAS_GUI_PATH)])
+    button_2.config(image=button_image_2_pressed)  # cambia imagen
+    try:
+        proc = subprocess.Popen(
+            [sys.executable, str(ESTADISTICAS_GUI_PATH)],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE
+        )
+        print("[INFO] GUI de estadísticas lanzada.")
+    except Exception as e:
+        print(f"[ERROR] No se pudo abrir estadísticas: {e}")
     window.after(4000, window.destroy)
+
 
 # ----------------- Cargar datos del usuario -----------------
 
@@ -117,6 +129,7 @@ button_1 = Button(
 button_1.place(x=148.0, y=88.0, width=156.55, height=74.16)
 
 button_image_2 = PhotoImage(file=relative_to_assets("button_2.png"))
+button_image_2_pressed = PhotoImage(file=relative_to_assets("button_2.1.png"))
 button_2 = Button(
     image=button_image_2,
     borderwidth=0,
