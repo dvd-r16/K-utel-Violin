@@ -55,11 +55,24 @@ estado_imu = "Desconocido"
 BASE_PATH = Path(__file__).resolve().parent.parent
 USER_SELECTED_PATH = BASE_PATH / "usuario_seleccionado.txt"
 USERS_PATH = BASE_PATH / "Login" / "usuarios"
+FLAG_PERSONA = BASE_PATH / "persona_detectada_2.flag"
+AUDIO_SUBIR = "/home/dvdr/Documentos/K-utel-Violin/Maestro/Lyra/Error.LowViolin.wav"
+AUDIO_BAJAR = "/home/dvdr/Documentos/K-utel-Violin/Maestro/Lyra/Error.HighViolin.wav"
+AUDIO_AGARRE = "/home/dvdr/Documentos/K-utel-Violin/Maestro/Lyra/Error.palma.wav"
+AUDIO_MAL_ABAJO = "/home/dvdr/Documentos/K-utel-Violin/Maestro/Lyra/Error.MunyAlV.wav"
+AUDIO_MAL_ARRIBA = "/home/dvdr/Documentos/K-utel-Violin/Maestro/Lyra/Error.MunyBaV.wav"
+
+
 
 
 pygame.mixer.init()
 sound_correct = pygame.mixer.Sound(str(SCRIPT_DIR / "Correct.wav"))
 sound_incorrect = pygame.mixer.Sound(str(SCRIPT_DIR / "Incorrect.wav"))
+sound_subir = pygame.mixer.Sound(AUDIO_SUBIR)
+sound_bajar = pygame.mixer.Sound(AUDIO_BAJAR)
+sound_agarre_mal = pygame.mixer.Sound(AUDIO_AGARRE)
+sound_todo_mal_arriba = pygame.mixer.Sound(AUDIO_MAL_ARRIBA)
+sound_todo_mal_abajo = pygame.mixer.Sound(AUDIO_MAL_ABAJO)
 
 def cargar_imagen(path, size=(50, 50)):
     return np.array(Image.open(ASSETS_PATH / path).resize(size).convert("RGBA"))
@@ -135,6 +148,13 @@ def ai_output_tensor_draw(request: CompletedRequest, boxes, scores, keypoints, s
             pegar_imagen_en_array(m.array, imagen_imu_idle, x=10, y=10)
 
         if boxes is not None and len(boxes) > 0:
+            if not FLAG_PERSONA.exists():
+                try:
+                    with open(FLAG_PERSONA, "w") as f:
+                        f.write("persona detectada")
+                    print("[INFO] Flag de persona detectada creada.")
+                except Exception as e:
+                    print(f"[ERROR] No se pudo crear la flag: {e}")
             drawer.annotate_image(m.array, boxes, scores,
                                   np.zeros(scores.shape), keypoints, args.detection_threshold,
                                   args.detection_threshold, request.get_metadata(), picam2, stream)
@@ -175,8 +195,28 @@ def ai_output_tensor_draw(request: CompletedRequest, boxes, scores, keypoints, s
 
                         if puntuacion == 1:
                             sound_correct.play()
-                        else:
+                        elif postura_correcta and not imu_correcto:
                             sound_incorrect.play()
+                            print("[AVISO] IMU indica que la muñeca está mal → CORRIGE TU MUÑECA.")
+                            sound_agarre_mal.play()
+
+                        elif not postura_correcta and imu_correcto:
+                            sound_incorrect.play()
+                            if diferencia > args.margen_altura:
+                                print("[POSTURA] Muñeca demasiado arriba → BAJA el violín.")
+                                sound_bajar.play()
+                            elif diferencia < -args.margen_altura:
+                                print("[POSTURA] Muñeca demasiado abajo → ELEVA el violín.")
+                                sound_subir.play()
+
+                        elif not postura_correcta and not imu_correcto:
+                            sound_incorrect.play()
+                            if diferencia > args.margen_altura:
+                                print("👉 Ambas fallas detectadas. Muñeca muy arriba.")
+                                sound_todo_mal_arriba.play()
+                            elif diferencia < -args.margen_altura:
+                                print("👉 Ambas fallas detectadas. Muñeca muy abajo.")
+                                sound_todo_mal_abajo.play()
 
                         if puntuacion == 1:
                             estado_eval = "✔️ EXCELENTE"
@@ -186,13 +226,13 @@ def ai_output_tensor_draw(request: CompletedRequest, boxes, scores, keypoints, s
                             estado_eval = "❌ INCORRECTO"
                         print(f"[EVAL] {estado_eval} | Evaluación #{evaluaciones_realizadas}/20")
                         if evaluaciones_realizadas >= 20:
-                            registrar_resultado(leccion_idx=1, aciertos=resultados.count(True))  # Lección 2
-                            distribuir_puntos_en_txt(leccion_idx=1, aciertos=resultados.count(True))
+                            registrar_resultado(leccion_idx=1, aciertos=sum(resultados))
+                            distribuir_puntos_en_txt(leccion_idx=1, aciertos=sum(resultados))
                             print("[FIN] Se completaron 20 evaluaciones. Esperando instrucciones del proceso padre...")
                             global cerrar_programa
                             cerrar_programa = True
                             # Señal para el padre
-                            with open("evaluaciones_completadas.flag", "w") as f:
+                            with open("evaluaciones_completadas_2.flag", "w") as f:
                                 f.write("done")
                     global temporizador_activo
                     if mostrar_color_resultado:
