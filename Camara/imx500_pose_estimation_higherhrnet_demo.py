@@ -85,7 +85,7 @@ imagen_timer = cargar_imagen("Timer.png")
 imagen_timer2 = cargar_imagen("Timer2.png")
 imagen_imu_correcto = cargar_imagen("Correct2.png") #AGREGAR
 imagen_imu_incorrecto = cargar_imagen("Incorrect2.png") #AGREGAR
-imagen_imu_idle = cargar_imagen("Idle.png") #AGREAR
+imagen_imu_idle = cargar_imagen("Idle2.png") #AGREAR
 
 
 

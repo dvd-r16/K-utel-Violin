@@ -32,7 +32,7 @@ ESTADISTICAS_GUI_PATH = BASE_PATH / "Stats" / "build" / "gui.py"
 VIDEO1_PATH = BASE_PATH / "Video" / "build" / "Video1.py"
 VIDEO2_PATH = BASE_PATH / "Video" / "build" / "Video2.py"
 VIDEO3_PATH = BASE_PATH / "Video" / "build" / "Video3.py"
-VIDEO4_PATH = BASE_PATH / "Video" / "build" / "Video4.py"
+VIDEO4_PATH = BASE_PATH / "Camara" / "iniciar_analisis_libre.py"
 
 def relative_to_assets(path: str) -> Path:
     return ASSETS_PATH / Path(path)

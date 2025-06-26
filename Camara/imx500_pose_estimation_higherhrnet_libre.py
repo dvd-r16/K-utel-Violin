@@ -43,7 +43,7 @@ tick_total = 0
 evaluaciones_realizadas = 0
 resultados = []
 
-
+ultimo_tick_evaluado = time.time()  # Control de tiempo entre ticks y evaluaciones
 last_boxes = None
 last_scores = None
 last_keypoints = None
@@ -108,8 +108,14 @@ sound_altura_arco = pygame.mixer.Sound(AUDIO_E23)
 #Error Triple - Completo
 sound_todo_mal = pygame.mixer.Sound(AUDIO_MAL)
 
+imagen_altf4 = np.array(Image.open(ASSETS_PATH / "endsession.png").convert("RGBA"))
+
+
 def cargar_imagen(path, size=(50, 50)):
     return np.array(Image.open(ASSETS_PATH / path).resize(size).convert("RGBA"))
+
+imagen_altf4 = np.array(Image.open(BASE_PATH / "Camara" / "endsession.png").convert("RGBA"))
+
 
 # Imágenes para los cuadros
 imagen_idle = cargar_imagen("Idle.png")              # Postura (altura)
@@ -126,6 +132,7 @@ imagen_incorrecto3 = cargar_imagen("Incorrect3.png")
 
 imagen_tick_on = cargar_imagen("Tick_on.png") #Pulsos
 imagen_tick_off = cargar_imagen("Tick_off.png")
+
 
 def pegar_imagen_en_array(m_array, imagen_np, x, y):
     h, w = imagen_np.shape[:2]
@@ -196,6 +203,13 @@ def ai_output_tensor_draw(request: CompletedRequest, boxes, scores, keypoints, s
             pegar_imagen_en_array(m.array, imagen_incorrecto3, x=10, y=70)
         else:
             pegar_imagen_en_array(m.array, imagen_idle3, x=10, y=70)
+
+        # Insertar imagen Alt+F4 en la esquina inferior derecha
+        h_img, w_img = imagen_altf4.shape[:2]
+        h_frame, w_frame = m.array.shape[:2]
+        x_altf4 = w_frame - w_img - 10
+        y_altf4 = h_frame - h_img - 10
+        m.array[y_altf4:y_altf4 + h_img, x_altf4:x_altf4 + w_img] = imagen_altf4
 
         if boxes is not None and len(boxes) > 0:
             drawer.annotate_image(m.array, boxes, scores,
@@ -269,6 +283,8 @@ def ai_output_tensor_draw(request: CompletedRequest, boxes, scores, keypoints, s
                         mostrar_color_resultado = True
                         resultados.append(puntuacion)
                         evaluaciones_realizadas += 1
+                        ultimo_tick_evaluado = time.time()  # Actualizamos al evaluar
+
 
                         if puntuacion == 1.0:
                             sound_correct.play()
@@ -312,16 +328,7 @@ def ai_output_tensor_draw(request: CompletedRequest, boxes, scores, keypoints, s
                             estado_eval = "❌ INCORRECTO"
 
                         print(f"[EVAL] {estado_eval} | Evaluación #{evaluaciones_realizadas}/20")
-                        if evaluaciones_realizadas >= 20:
-                            aciertos = sum(resultados)
-                            registrar_resultado(leccion_idx=2, aciertos=aciertos)  # Lección 3
-                            distribuir_puntos_en_txt(leccion_idx=2, aciertos=aciertos)
-                            print("[FIN] Se completaron 20 evaluaciones. Esperando instrucciones del proceso padre...")
-                            global cerrar_programa
-                            cerrar_programa = True
-                            # Señal para el padre
-                            with open(FLAG_EVALUACION, 'w') as f:
-                                f.write("done")
+                        
                     global temporizador_activo
                     if mostrar_color_resultado:
                         imagen_a_usar = imagen_correcto if color_resultado == (0, 255, 0, 255) else imagen_incorrecto
@@ -332,6 +339,7 @@ def ai_output_tensor_draw(request: CompletedRequest, boxes, scores, keypoints, s
                     # Cuadro 3 – indicador visual de tick azul (parte inferior derecha)
                     imagen_tick = imagen_tick_on if mostrar_tick_azul else imagen_tick_off
                     pegar_imagen_en_array(m.array, imagen_tick, x=70, y=70)
+                    
        
 
 def activar_cuadro_tick():
@@ -402,6 +410,7 @@ def audio_monitor():
     except Exception as e:
         print(f"[ERROR] Monitoreo de audio: {e}")
     finally:
+        subprocess.Popen(["python3", str(BASE_PATH / "Menu" / "build" / "gui.py")])
         stream.stop_stream()
         stream.close()
         p.terminate()
@@ -416,10 +425,7 @@ def detener_componentes():
         picam2.stop()
     except Exception as e:
         print(f"[WARN] Error al detener picam2: {e}")
-    try:
-        imx500.stop_network_task()
-    except Exception as e:
-        print(f"[WARN] Error al detener red neuronal: {e}")
+
 
 def socket_tick_listener():
     global tick_count, evaluar_tick, tick_total, cerrar_programa
@@ -542,6 +548,7 @@ def hilo_simulacion_etapas():
 
 if __name__ == "__main__":
     args = get_args()
+    signal.signal(signal.SIGINT, manejar_terminacion) 
     signal.signal(signal.SIGTERM, manejar_terminacion)
 
 
@@ -601,7 +608,7 @@ if __name__ == "__main__":
         Thread(target=hilo_estado_imu, daemon=True).start()
         Thread(target=hilo_simulacion_etapas, daemon=True).start()
 
-        while True:
+        while not cerrar_programa:
             time.sleep(0.5)
 
     except KeyboardInterrupt:

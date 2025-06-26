@@ -55,13 +55,15 @@ estado_imu = "Desconocido"
 BASE_PATH = Path(__file__).resolve().parent.parent
 USER_SELECTED_PATH = BASE_PATH / "usuario_seleccionado.txt"
 USERS_PATH = BASE_PATH / "Login" / "usuarios"
+VENV_PYTHON = "/home/dvdr/Documentos/K-utel-Violin/Kutelenv/bin/python"
+RESULT_GUI_PATH = BASE_PATH / "Results" / "build" / "Result2.py"
 FLAG_PERSONA = BASE_PATH / "persona_detectada_2.flag"
 AUDIO_SUBIR = "/home/dvdr/Documentos/K-utel-Violin/Maestro/Lyra/Error.LowViolin.wav"
 AUDIO_BAJAR = "/home/dvdr/Documentos/K-utel-Violin/Maestro/Lyra/Error.HighViolin.wav"
 AUDIO_AGARRE = "/home/dvdr/Documentos/K-utel-Violin/Maestro/Lyra/Error.palma.wav"
 AUDIO_MAL_ABAJO = "/home/dvdr/Documentos/K-utel-Violin/Maestro/Lyra/Error.MunyAlV.wav"
 AUDIO_MAL_ARRIBA = "/home/dvdr/Documentos/K-utel-Violin/Maestro/Lyra/Error.MunyBaV.wav"
-
+RESULT_GUI_PATH = BASE_PATH / "Results" / "build" / "Result2.py"
 
 
 
@@ -85,7 +87,7 @@ imagen_tick_on = cargar_imagen("Tick_on.png")
 imagen_tick_off = cargar_imagen("Tick_off.png")
 imagen_imu_correcto = cargar_imagen("Correct2.png") #AGREGAR
 imagen_imu_incorrecto = cargar_imagen("Incorrect2.png") #AGREGAR
-imagen_imu_idle = cargar_imagen("Idle.png") #AGREAR
+imagen_imu_idle = cargar_imagen("Idle2.png") #AGREAR
 
 def pegar_imagen_en_array(m_array, imagen_np, x, y):
     h, w = imagen_np.shape[:2]
@@ -134,7 +136,8 @@ def borrar_color_resultado():
     temporizador_activo = False
     if last_m_array is not None:
         last_m_array[10:60, 70:120] = (255, 255, 255, 255)  # Limpiar resultado (cuadro 2)
-
+        last_m_array.close()
+        last_m_array = None
 
 def ai_output_tensor_draw(request: CompletedRequest, boxes, scores, keypoints, stream='main'):
     
@@ -232,7 +235,7 @@ def ai_output_tensor_draw(request: CompletedRequest, boxes, scores, keypoints, s
                             global cerrar_programa
                             cerrar_programa = True
                             # Señal para el padre
-                            with open("evaluaciones_completadas_2.flag", "w") as f:
+                            with open(BASE_PATH / "evaluaciones_completadas_2.flag", "w") as f:
                                 f.write("done")
                     global temporizador_activo
                     if mostrar_color_resultado:
@@ -327,6 +330,13 @@ def audio_monitor():
         
 def manejar_terminacion(signum, frame):
     print("[SEÑAL] Terminación recibida, limpiando cámara...")
+    try:
+        subprocess.Popen(["python3", str(RESULT_GUI_PATH)])
+        print("[INFO] GUI de resultados abierta correctamente.")
+    except Exception as e:
+        print(f"[ERROR] Al abrir Result.py: {e}")
+
+    print("[INFO] Programa finalizado correctamente.")
     detener_componentes()
     sys.exit(0)
 
@@ -497,8 +507,33 @@ if __name__ == "__main__":
 
         Thread(target=hilo_estado_imu, daemon=True).start()
 
-        while True:
+        while not cerrar_programa:
             time.sleep(0.5)
+
+        # 🔽 Se llegó al final por evaluación completa
+        print("[INFO] Evaluaciones completadas detectadas. Iniciando cierre limpio...")
+
+        try:
+            picam2.stop()
+            time.sleep(0.3)
+            picam2.close()
+        except Exception as e:
+            print(f"[WARN] Error al detener picam2: {e}")
+
+        try:
+            imx500.stop_network_task()
+        except AttributeError:
+            print("[WARN] Error al detener red neuronal: 'IMX500' object has no attribute 'stop_network_task'")
+        except Exception as e:
+            print(f"[WARN] Error inesperado al detener red neuronal: {e}")
+
+        import gc
+        del picam2
+        gc.collect()
+
+        print("[INFO] Programa finalizado correctamente.")
+        sys.exit(0)
+
 
     except KeyboardInterrupt:
         print("\n[INFO] Interrupción recibida, cerrando...")
@@ -515,3 +550,10 @@ if __name__ == "__main__":
             print(f"[WARN] No se pudo detener red neuronal: {e}")
         
         print("[INFO] Programa finalizado correctamente.")
+
+        # Abrir Resultados incluso si se cierra con X o interrupción
+        try:
+            subprocess.Popen([VENV_PYTHON, str(RESULT_GUI_PATH)])
+            print("[INFO] GUI de resultados abierta con entorno virtual.")
+        except Exception as e:
+            print(f"[ERROR] Al abrir Result.py: {e}")

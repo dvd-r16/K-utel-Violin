@@ -58,6 +58,8 @@ estado_imu2 = "Desconocido"
 BASE_PATH = Path(__file__).resolve().parent.parent
 USER_SELECTED_PATH = BASE_PATH / "usuario_seleccionado.txt"
 USERS_PATH = BASE_PATH / "Login" / "usuarios"
+VENV_PYTHON = "/home/dvdr/Documentos/K-utel-Violin/Kutelenv/bin/python"
+RESULT_GUI_PATH = BASE_PATH / "Results" / "build" / "Result3.py"
 FLAG_PERSONA = BASE_PATH / "persona_detectada_3.flag"
 FLAG_PASO1 = BASE_PATH / "paso1_completado.flag"
 FLAG_PASO2 = BASE_PATH / "paso2_completado.flag"
@@ -318,10 +320,14 @@ def ai_output_tensor_draw(request: CompletedRequest, boxes, scores, keypoints, s
                             distribuir_puntos_en_txt(leccion_idx=2, aciertos=aciertos)
                             print("[FIN] Se completaron 20 evaluaciones. Esperando instrucciones del proceso padre...")
                             global cerrar_programa
+                            try:
+                                with open(FLAG_EVALUACION, 'w') as f:
+                                    f.write("done")
+                                print("[INFO] FLAG_EVALUACION escrita correctamente.")
+                            except Exception as e:
+                                print(f"[ERROR] No se pudo escribir FLAG_EVALUACION: {e}")
+
                             cerrar_programa = True
-                            # Señal para el padre
-                            with open(FLAG_EVALUACION, 'w') as f:
-                                f.write("done")
                     global temporizador_activo
                     if mostrar_color_resultado:
                         imagen_a_usar = imagen_correcto if color_resultado == (0, 255, 0, 255) else imagen_incorrecto
@@ -408,6 +414,13 @@ def audio_monitor():
         
 def manejar_terminacion(signum, frame):
     print("[SEÑAL] Terminación recibida, limpiando cámara...")
+    try:
+        subprocess.Popen(["python3", str(RESULT_GUI_PATH)])
+        print("[INFO] GUI de resultados abierta correctamente.")
+    except Exception as e:
+        print(f"[ERROR] Al abrir Result.py: {e}")
+
+    print("[INFO] Programa finalizado correctamente.")
     detener_componentes()
     sys.exit(0)
 
@@ -601,8 +614,33 @@ if __name__ == "__main__":
         Thread(target=hilo_estado_imu, daemon=True).start()
         Thread(target=hilo_simulacion_etapas, daemon=True).start()
 
-        while True:
+        while not cerrar_programa:
             time.sleep(0.5)
+        
+        # 🔽 Se llegó al final por evaluación completa
+        print("[INFO] Evaluaciones completadas detectadas. Iniciando cierre limpio...")
+
+        try:
+            picam2.stop()
+            time.sleep(0.3)
+            picam2.close()
+        except Exception as e:
+            print(f"[WARN] Error al detener picam2: {e}")
+
+        try:
+            imx500.stop_network_task()
+        except AttributeError:
+            print("[WARN] Error al detener red neuronal: 'IMX500' object has no attribute 'stop_network_task'")
+        except Exception as e:
+            print(f"[WARN] Error inesperado al detener red neuronal: {e}")
+
+        import gc
+        del picam2
+        gc.collect()
+
+        print("[INFO] Programa finalizado correctamente.")
+        sys.exit(0)
+
 
     except KeyboardInterrupt:
         print("\n[INFO] Interrupción recibida, cerrando...")
@@ -619,3 +657,10 @@ if __name__ == "__main__":
             print(f"[WARN] No se pudo detener red neuronal: {e}")
         
         print("[INFO] Programa finalizado correctamente.")
+
+        # Abrir Resultados incluso si se cierra con X o interrupción
+        try:
+            subprocess.Popen([VENV_PYTHON, str(RESULT_GUI_PATH)])
+            print("[INFO] GUI de resultados abierta con entorno virtual.")
+        except Exception as e:
+            print(f"[ERROR] Al abrir Result.py: {e}")
