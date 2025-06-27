@@ -4,6 +4,10 @@ import subprocess
 import pygame
 import os
 import sys
+import threading
+import time
+import requests
+
 
 VENV_PYTHON = "/home/dvdr/Documentos/K-utel-Violin/Kutelenv/bin/python"
 
@@ -85,6 +89,39 @@ button_image_3 = PhotoImage(file=relative_to_assets("button_3.png"))
 button_active_3 = PhotoImage(file=relative_to_assets("button_3.1.png"))
 
 active_button = None
+
+def verificar_conexion_arduino():
+    def ciclo():
+        while True:
+            try:
+                # Estado: buscando
+                canvas.itemconfig(image_11, image=image_image_11_S)
+                print("[ARDUINO] Intentando iniciar monitoreo...")
+                res = requests.get("http://192.168.4.1/start", timeout=2)
+                texto = res.text.strip().lower()
+
+                if "monitoreo activado" in texto:
+                    print("[✅] Arduino conectado correctamente.")
+                    canvas.itemconfig(image_11, image=image_image_11)
+                    break
+
+                elif "sensor no detectado" in texto:
+                    print("[❌] Sensor no detectado.")
+                    canvas.itemconfig(image_11, image=image_image_11_E)
+                    time.sleep(5)
+
+                else:
+                    print("[⚠️] Respuesta inesperada:", texto)
+                    canvas.itemconfig(image_11, image=image_image_11_E)
+                    time.sleep(5)
+
+            except Exception as e:
+                print(f"[ERROR] Conexión fallida: {e}")
+                canvas.itemconfig(image_11, image=image_image_11_E)
+                time.sleep(5)
+
+    threading.Thread(target=ciclo, daemon=True).start()
+
 
 def lanzar_y_cerrar(script_path):
     try:
@@ -200,7 +237,9 @@ image_10 = canvas.create_image(1021.3644409179688, 123.8341064453125, image=imag
 
 
 image_image_11 = PhotoImage(file=relative_to_assets("image_11.png"))
-canvas.create_image(1200.0, 125.0, image=image_image_11)
+image_image_11_S = PhotoImage(file=relative_to_assets("image_11.S.png"))
+image_image_11_E = PhotoImage(file=relative_to_assets("image_11.E.png"))
+image_11 = canvas.create_image(1200.0, 125.0, image=image_image_11)
 
 
 # Grupo B y G
@@ -389,4 +428,5 @@ try:
 except Exception as e:
     print(f"[ERROR] Al leer la información del usuario: {e}")
 
+verificar_conexion_arduino()
 window.mainloop()

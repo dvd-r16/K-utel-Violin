@@ -41,6 +41,7 @@ temporizador_activo = False
 tick_total = 0
 evaluaciones_realizadas = 0
 resultados = []
+ultima_postura_correcta = None
 
 
 last_boxes = None
@@ -96,16 +97,25 @@ def pegar_imagen_en_array(m_array, imagen_np, x, y):
 def obtener_estado_imu():
     global estado_imu
     try:
-        res = requests.get(f"{ARDUINO_URL}/estado", timeout=0.5)
+        res = requests.get(f"{ARDUINO_URL}/estado", timeout=1.5)
         texto = res.text.strip()
-        estado_imu = texto
-        print("[IMU]", estado_imu)  # <-- Aquí
-    except:
-        estado_imu = "Error de conexión"
+        lineas = texto.splitlines()
 
-    if "correcta" in estado_imu.lower():
+        # Solo usar la 2ª línea, que es "Estado: mal" del IMU 1
+        if len(lineas) >= 2:
+            estado_imu = lineas[1].strip()  # ← Aquí está el estado del IMU 1
+        else:
+            estado_imu = "Desconocido"
+
+        print("[IMU]", estado_imu)
+
+    except Exception as e:
+        estado_imu = "Error de conexión"
+        print(f"[ERROR] Conexión con IMU: {e}")
+
+    if "bien" in estado_imu.lower():
         print("[DECISIÓN] Cuadro 1 = VERDE")
-    elif "inc" in estado_imu.lower():
+    elif "mal" in estado_imu.lower():
         print("[DECISIÓN] Cuadro 1 = ROJO")
     else:
         print("[DECISIÓN] Cuadro 1 = GRIS/Blanco")
@@ -140,12 +150,12 @@ def borrar_color_resultado():
         last_m_array = None
 
 def ai_output_tensor_draw(request: CompletedRequest, boxes, scores, keypoints, stream='main'):
-    
+    global ultima_postura_correcta
     with MappedArray(request, stream) as m:
         # Cuadro 1 – IMU (arriba izquierda)
-        if "posicion correcta" in estado_imu.lower():
+        if "bien" in estado_imu.lower():
             pegar_imagen_en_array(m.array, imagen_imu_correcto, x=10, y=10)
-        elif "posicion incorrecta" in estado_imu.lower():
+        elif "mal" in estado_imu.lower():
             pegar_imagen_en_array(m.array, imagen_imu_incorrecto, x=10, y=10)
         else:
             pegar_imagen_en_array(m.array, imagen_imu_idle, x=10, y=10)
@@ -182,7 +192,8 @@ def ai_output_tensor_draw(request: CompletedRequest, boxes, scores, keypoints, s
                     if evaluar_tick:
                         evaluar_tick = False
                         postura_correcta = -args.margen_altura <= diferencia <= args.margen_altura
-                        imu_correcto = "posicion correcta" in estado_imu.lower()
+                        ultima_postura_correcta = postura_correcta
+                        imu_correcto = "bien" in estado_imu.lower()
 
                         if postura_correcta and imu_correcto:
                             puntuacion = 1
@@ -238,15 +249,21 @@ def ai_output_tensor_draw(request: CompletedRequest, boxes, scores, keypoints, s
                             with open(BASE_PATH / "evaluaciones_completadas_2.flag", "w") as f:
                                 f.write("done")
                     global temporizador_activo
-                    if mostrar_color_resultado:
-                        imagen_a_usar = imagen_correcto if color_resultado == (0, 255, 0, 255) else imagen_incorrecto
-                        if not temporizador_activo:
-                            temporizador_activo = True
-                            threading.Timer(1.5, borrar_color_resultado).start()
+                    #if mostrar_color_resultado:
+                    #    imagen_a_usar = imagen_correcto if color_resultado == (0, 255, 0, 255) else imagen_incorrecto
+                    #    if not temporizador_activo:
+                    #        temporizador_activo = True
+                    #        threading.Timer(1.5, borrar_color_resultado).start()
+                    #else:
+                    #    imagen_a_usar = imagen_idle
+
+                    #pegar_imagen_en_array(m.array, imagen_a_usar, x=70, y=10)
+
+                    if mostrar_color_resultado and ultima_postura_correcta is not None:
+                        imagen_a_usar = imagen_correcto if ultima_postura_correcta else imagen_incorrecto
+                        pegar_imagen_en_array(m.array, imagen_a_usar, x=70, y=10)
                     else:
                         imagen_a_usar = imagen_idle
-
-                    pegar_imagen_en_array(m.array, imagen_a_usar, x=70, y=10)
 
 
 

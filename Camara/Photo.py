@@ -15,7 +15,9 @@ picam2.start()
 
 # Crear ventana principal
 ventana = tk.Tk()
+
 ventana.title("Captura de Imagen - Raspberry Pi")
+ventana.overrideredirect(True)
 ventana.geometry("500x500")
 ventana.configure(bg="#203262")
 
@@ -53,7 +55,6 @@ def capturar():
     imagen_cuadrada = imagen[start_y:start_y+size, start_x:start_x+size]
     imagen_pil = Image.fromarray(imagen_cuadrada).resize((420, 420)).convert("RGB")
 
-
     # Leer usuario seleccionado
     base_path = Path(__file__).resolve().parent.parent  # Ir a K-utel-Violin/
     path_usuario = base_path / "usuario_seleccionado.txt"
@@ -74,8 +75,11 @@ def capturar():
     imagen_pil.save(ruta_completa)
     print(f"📸 Imagen guardada como: {ruta_completa}")
 
+    # Cerrar la ventana automáticamente
+    ventana.destroy()
+
 # Crear botón y colocarlo encima del canvas
-boton_captura = tk.Button(ventana, text="📷 Capturar", command=capturar,
+boton_captura = tk.Button(ventana, text="Capturar", command=capturar,
                           bg="#4CAF50", fg="white", font=("Arial", 12))
 
 # Superponer botón en esquina inferior derecha del canvas

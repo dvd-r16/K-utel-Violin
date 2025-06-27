@@ -69,6 +69,10 @@ def main():
         pygame.mixer.music.play()
         while pygame.mixer.music.get_busy():
             time.sleep(0.1)
+        FLAG_POS_CODO = BASE_PATH / "guardar_posicion_codo.flag"
+        FLAG_POS_CODO.write_text("go")
+        print("[FLAG] Se indicó guardar la posición del codo izquierdo.")
+
 
         print("[INFO] Iniciando metrónomo...")
         metro = subprocess.Popen(

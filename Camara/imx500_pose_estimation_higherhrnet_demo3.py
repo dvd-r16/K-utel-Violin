@@ -37,12 +37,13 @@ last_m_array = None  # Referencia al último frame para pintar
 mostrar_tick_azul = False
 cerrar_programa = False
 temporizador_activo = False
-MODO_SIMULACION_IMU = True  # Cambia a False cuando uses el IMU real
+MODO_SIMULACION_IMU = False  # Cambia a False cuando uses el IMU real
 
 tick_total = 0
 evaluaciones_realizadas = 0
 resultados = []
-
+MARGEN_CODO = 20
+posicion_codo_inicial = None
 
 last_boxes = None
 last_scores = None
@@ -70,8 +71,11 @@ FLAG_HABILITAR_PASO1 = BASE_PATH / "habilitar_paso1.flag"
 FLAG_HABILITAR_PASO2 = BASE_PATH / "habilitar_paso2.flag"
 FLAG_HABILITAR_PASO3 = BASE_PATH / "habilitar_paso3.flag"
 
+FLAG_POS_CODO = BASE_PATH / "guardar_posicion_codo.flag"
+
+
 # Eliminar flags anteriores al inicio
-for flag in [FLAG_PERSONA, FLAG_PASO1, FLAG_PASO2, FLAG_PASO3, FLAG_EVALUACION]:
+for flag in [FLAG_PERSONA, FLAG_PASO1, FLAG_PASO2, FLAG_PASO3, FLAG_EVALUACION, FLAG_POS_CODO]:
     if flag.exists():
         try:
             flag.unlink()
@@ -134,24 +138,48 @@ def pegar_imagen_en_array(m_array, imagen_np, x, y):
     m_array[y:y+h, x:x+w] = imagen_np
 
 def obtener_estado_imu():
-    global estado_imu, estado_imu1, estado_imu2
+    global estado_imu, estado_imu1
+
+    # Evaluar el estado del codo con keypoints
+    codo_estado = "desconocido"
+    if posicion_codo_inicial is not None and last_keypoints is not None:
+        for person in last_keypoints:
+            left_elbow = person[7]
+            if left_elbow[2] > args.detection_threshold:
+                x, y = left_elbow[0], left_elbow[1]
+                x0, y0 = posicion_codo_inicial
+                dentro_margen = abs(x - x0) <= MARGEN_CODO and abs(y - y0) <= MARGEN_CODO
+                codo_estado = "good" if dentro_margen else "bad"
+                break
+    else:
+        codo_estado = "desconocido"
+
+    # Construir la URL incluyendo el estado del codo como parámetro
+    url = f"{ARDUINO_URL}/estado"
+    if codo_estado in ["good", "bad"]:
+        url += f"?led2={codo_estado}"
+
     try:
-        res = requests.get(f"{ARDUINO_URL}/estado", timeout=0.5)
+        res = requests.get(url, timeout=0.5)
         texto = res.text.strip()
-        estado_imu = texto  # texto completo
-        partes = texto.split(",")
-        if len(partes) == 2:
-            estado_imu1 = partes[0].strip().lower()
-            estado_imu2 = partes[1].strip().lower()
+        estado_imu = texto  # respuesta completa
+
+        lineas = texto.splitlines()
+        if len(lineas) >= 2:
+            estado = lineas[1].strip().lower()
+            if "bien" in estado:
+                estado_imu1 = "bien"
+            elif "mal" in estado:
+                estado_imu1 = "mal"
+            else:
+                estado_imu1 = "desconocido"
         else:
-            estado_imu1 = estado_imu2 = "desconocido"
+            estado_imu1 = "desconocido"
     except:
         estado_imu = "Error de conexión"
-        estado_imu1 = estado_imu2 = "error"
+        estado_imu1 = "error"
 
-    # Debug
-    print(f"[IMU] IMU1 = {estado_imu1.upper()} | IMU2 = {estado_imu2.upper()}")
-
+    print(f"[IMU] IMU1 = {estado_imu1.upper()} | Codo = {codo_estado.upper()}")
 
 
 def ai_output_tensor_parse(metadata: dict):
@@ -180,25 +208,41 @@ def borrar_color_resultado():
         last_m_array[10:60, 70:120] = (255, 255, 255, 255)  # Limpiar resultado (cuadro 2)
 
 
+
 def ai_output_tensor_draw(request: CompletedRequest, boxes, scores, keypoints, stream='main'):
     global estado_imu, estado_imu1, estado_imu2
+    global posicion_codo_inicial, estado_codo_anterior, ultimo_envio_codo
+    global estado_agarre_anterior, ultimo_envio_agarre
     with MappedArray(request, stream) as m:
         # Cuadro 1 – IMU (arriba izquierda)
-        if "correcto1" in estado_imu1.lower():
+        if "bien" in estado_imu1.lower():
             pegar_imagen_en_array(m.array, imagen_correcto2, x=10, y=10)
-        elif "incorrecto1" in estado_imu1.lower():
+            nuevo_estado_agarre = "good"
+        elif "mal" in estado_imu1.lower():
             pegar_imagen_en_array(m.array, imagen_incorrecto2, x=10, y=10)
+            nuevo_estado_agarre = "bad"
         else:
             pegar_imagen_en_array(m.array, imagen_idle2, x=10, y=10)
+            nuevo_estado_agarre = None
 
+        
         # Cuadro 2 – IMU2 (abajo izquierda)
-        if "correcto2" in estado_imu2.lower():
-            pegar_imagen_en_array(m.array, imagen_correcto3, x=10, y=70)
-        elif "incorrecto2" in estado_imu2.lower():
-            pegar_imagen_en_array(m.array, imagen_incorrecto3, x=10, y=70)
+        if posicion_codo_inicial is not None and last_keypoints is not None:
+            for person in last_keypoints:
+                left_elbow = person[7]
+                if left_elbow[2] > args.detection_threshold:
+                    x, y = left_elbow[0], left_elbow[1]
+                    x0, y0 = posicion_codo_inicial
+                    dentro_margen = abs(x - x0) <= MARGEN_CODO and abs(y - y0) <= MARGEN_CODO
+
+                    nuevo_estado = "good" if dentro_margen else "bad"
+                    imagen = imagen_correcto3 if dentro_margen else imagen_incorrecto3
+                    pegar_imagen_en_array(m.array, imagen, x=10, y=70)
+
+                    break
         else:
             pegar_imagen_en_array(m.array, imagen_idle3, x=10, y=70)
-
+            
         if boxes is not None and len(boxes) > 0:
             drawer.annotate_image(m.array, boxes, scores,
                                   np.zeros(scores.shape), keypoints, args.detection_threshold,
@@ -209,6 +253,19 @@ def ai_output_tensor_draw(request: CompletedRequest, boxes, scores, keypoints, s
             last_m_array = m.array  # Guardamos referencia al frame actual
 
             for person in keypoints:
+                if FLAG_POS_CODO.exists() and posicion_codo_inicial is None:
+                    left_elbow = person[7]
+                    if left_elbow[2] > args.detection_threshold:
+                        posicion_codo_inicial = (left_elbow[0], left_elbow[1])
+                        print(f"[POS] Codo izquierdo guardado: {posicion_codo_inicial}")
+                        try:
+                            FLAG_POS_CODO.unlink()
+                        except:
+                            pass
+
+
+
+
                 shoulder = person[6]
                 elbow = person[8]
                 wrist = person[10]
@@ -258,8 +315,13 @@ def ai_output_tensor_draw(request: CompletedRequest, boxes, scores, keypoints, s
                     if evaluar_tick:
                         evaluar_tick = False
                         postura_correcta = -args.margen_altura <= diferencia <= args.margen_altura
-                        agarre_correcto = "correcto1" in estado_imu1
-                        arco_correcto = "correcto2" in estado_imu2
+                        agarre_correcto = "bien" in estado_imu1
+                        arco_correcto = False
+                        if posicion_codo_inicial is not None and person[7][2] > args.detection_threshold:
+                            x, y = person[7][0], person[7][1]
+                            x0, y0 = posicion_codo_inicial
+                            if abs(x - x0) <= MARGEN_CODO and abs(y - y0) <= MARGEN_CODO:
+                                arco_correcto = True
 
                         # Calcula cuántos de los 3 son correctos
                         aciertos = sum([postura_correcta, agarre_correcto, arco_correcto])
@@ -435,7 +497,7 @@ def detener_componentes():
         print(f"[WARN] Error al detener red neuronal: {e}")
 
 def socket_tick_listener():
-    global tick_count, evaluar_tick, tick_total, cerrar_programa
+    global tick_count, evaluar_tick, tick_total, cerrar_programa, posicion_codo_inicial
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server_socket.bind(('localhost', 9999))
     server_socket.listen(1)
@@ -457,6 +519,19 @@ def socket_tick_listener():
                     evaluar_tick = True
                     tick_total += 4
                     print(f"[TICK] Total acumulado: {tick_total}")
+
+                    # Guardar posición del codo izquierdo en el primer tick
+                    if tick_total == 4 and posicion_codo_inicial is None and last_keypoints is not None:
+                        for person in last_keypoints:
+                            left_elbow = person[7]
+                            if left_elbow[2] > args.detection_threshold:
+                                posicion_codo_inicial = (left_elbow[0], left_elbow[1])
+                                print(f"[INFO] Posición inicial del codo izquierdo guardada: {posicion_codo_inicial}")
+                                break
+
+
+
+
     except Exception as e:
         print(f"[ERROR] Socket tick listener: {e}")
     finally:

@@ -7,7 +7,7 @@ import time
 
 # Rutas base
 BASE_PATH = Path(__file__).resolve().parent.parent.parent
-VIDEO_PATH = BASE_PATH / "Video" / "build" / "assets" / "frame0" / "Video03.mp4"
+VIDEO_PATH = BASE_PATH / "Video" / "build" / "assets" / "frame0" / "video03.mp4"
 ANALISIS_PATH = BASE_PATH / "Camara" / "iniciar_analisis3.py"
 
 # Variables globales
@@ -40,7 +40,7 @@ def omitir_intro(event=None):
         vlc_player.stop()
         vlc_player.release()
     canvas.delete("all")
-    canvas.create_text(720, 450, text="⏩ Saltando intro...", fill="white", font=("Arial", 36, "bold"))
+    canvas.create_text(720, 450, text="Saltando intro...", fill="white", font=("Arial", 36, "bold"))
     root.after(1000, cerrar_ventana_y_lanzar_analisis)
 
 # Cuando finaliza naturalmente el video
@@ -66,7 +66,8 @@ def reproducir_video():
 
 # Interfaz con Tkinter
 root = tk.Tk()
-root.attributes("-fullscreen", True)
+#root.attributes("-fullscreen", True)
+root.overrideredirect(True)
 root.configure(bg="#32457D")
 canvas = Canvas(root, bg="#32457D", height=900, width=1440, bd=0, highlightthickness=0)
 canvas.pack(fill="both", expand=True)

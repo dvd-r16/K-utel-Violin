@@ -110,6 +110,10 @@ def main():
         stop3.set()
         reproducir_audio(AUDIO_INTRO4)
 
+        FLAG_POS_CODO = BASE_PATH / "guardar_posicion_codo.flag"
+        FLAG_POS_CODO.write_text("go")
+        print("[FLAG] Se indicó guardar la posición del codo izquierdo.")
+
         # --- Iniciar metrónomo y evaluación ---
         print("[INFO] Iniciando metrónomo y evaluación...")
         metro = subprocess.Popen(["python3", str(METRONOMO_SCRIPT)])

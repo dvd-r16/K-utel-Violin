@@ -33,7 +33,7 @@ def relative_to_assets(path: str) -> Path:
 window = Tk()
 
 window.geometry("1440x900")
-window.overrideredirect(True)
+#window.overrideredirect(True)
 window.configure(bg = "#32457D")
 
 

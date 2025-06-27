@@ -28,11 +28,11 @@ window = Tk()
 #window.attributes("-fullscreen", True)
 window.overrideredirect(True)
 window.geometry("1440x900")
-window.configure(bg="#FFFFFF")
+window.configure(bg="#32457D")
 
 canvas = Canvas(
     window,
-    bg="#FFFFFF",
+    bg="#32457D",
     height=864,
     width=1536,
     bd=0,
@@ -40,7 +40,7 @@ canvas = Canvas(
     relief="ridge"
 )
 canvas.place(x=0, y=0)
-canvas.create_rectangle(6.0, 0.0, 1554.0, 864.0, fill="#FFFFFF", outline="")
+canvas.create_rectangle(6.0, 0.0, 1554.0, 864.0, fill="#32457D", outline="")
 
 image_image_1 = PhotoImage(file=relative_to_assets("image_1.png"))
 canvas.create_image(768.0, 432.0, image=image_image_1)
