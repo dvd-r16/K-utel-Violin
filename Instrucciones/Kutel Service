@@ -1,0 +1,21 @@
+
+Creacion y modificacion del archivo.
+sudo nano /etc/systemd/system/kutel.service
+
+
+
+Luego reiniciar 
+systemctl daemon-reexec
+systemctl daemon-reload
+
+Iniciar servicio
+sudo systemctl start kutel.service
+
+Reiniciar servicio
+sudo systemctl restart kutel.service
+
+Estado servicio
+sudo systemctl status kutel.service
+
+Terminal del servicio
+journalctl -u kutel.service

@@ -293,7 +293,7 @@ def ai_output_tensor_draw(request: CompletedRequest, boxes, scores, keypoints, s
 
                     # Etapa 2: IMU en posición correcta
                     if not FLAG_PASO2.exists() and FLAG_HABILITAR_PASO2.exists():
-                        if "correcta" in estado_imu.lower():
+                        if "bien" in estado_imu.lower():
                             with open(FLAG_PASO2, 'w') as f:
                                 f.write('paso2')
                             print("[FLAG] Paso 2 completado → FLAG_PASO2")

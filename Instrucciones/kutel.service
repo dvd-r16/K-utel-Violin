@@ -1,0 +1,18 @@
+[Unit]
+Description=Iniciar K-utel Violin como programa Madre
+After=graphical.target
+
+[Service]
+Type=oneshot
+User=dvdr
+ExecStart=/bin/bash -c '/home/dvdr/Documentos/K-utel-Violin/Kutelenv/bin/python /home/dvdr/Documentos/K-utel-Violin/Start/build/gui.py && touch /home/dvdr/.kstart_done'
+RemainAfterExit=true
+Environment=DISPLAY=:0
+Environment=XAUTHORITY=/home/dvdr/.Xauthority
+Environment=XDG_RUNTIME_DIR=/run/user/1000
+WorkingDirectory=/home/dvdr/Documentos/K-utel-Violin/Start/build
+RemainAfterExit=no
+Restart=no
+KillMode=process
+[Install]
+WantedBy=default.target

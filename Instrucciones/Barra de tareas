@@ -1,0 +1,5 @@
+sudo nano .config/wf-panel-pi.ini
+
+agregar o descomentar
+autohide=true
+#background_color=#00000000
